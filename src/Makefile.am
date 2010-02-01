@@ -19,6 +19,9 @@ INCLUDES = \
 if BOXTYPE_COOL
 INCLUDES += -I$(top_srcdir)/lib/libcoolstream
 endif
+if BOXTYPE_TRIPLE
+INCLUDES += -I$(top_srcdir)/lib/libtriple
+endif
 
 bin_PROGRAMS = neutrino
 
@@ -74,5 +77,9 @@ if BOXTYPE_COOL
 neutrino_LDADD += \
 	-lcoolstream \
 	-lnxp
+endif
+if BOXTYPE_TRIPLE
+neutrino_LDADD += \
+	$(top_builddir)/lib/libtriple/libtriple.a
 endif
 
