@@ -579,35 +579,3 @@ const std::string convertLatin1UTF8(const std::string &string)
 	}
 	return std::string((char*)res, t);
 }
-
-int isUTF8(const std::string &string)
-{
-	unsigned int len=string.size();
-	
-	for (unsigned int i=0; i < len; ++i)
-	{
-		if (!(string[i]&0x80)) // normal ASCII
-			continue;
-		if ((string[i] & 0xE0) == 0xC0) // one char following.
-		{
-				// first, length check:
-			if (i+1 >= len)
-				return 0; // certainly NOT utf-8
-			i++;
-			if ((string[i]&0xC0) != 0x80)
-				return 0; // no, not UTF-8.
-		} else if ((string[i] & 0xF0) == 0xE0)
-		{
-			if ((i+1) >= len)
-				return 0;
-			i++;
-			if ((string[i]&0xC0) != 0x80)
-				return 0;
-			i++;
-			if ((string[i]&0xC0) != 0x80)
-				return 0;
-		}
-	}
-	return 1; // can be UTF8 (or pure ASCII, at least no non-UTF-8 8bit characters)
-}
-

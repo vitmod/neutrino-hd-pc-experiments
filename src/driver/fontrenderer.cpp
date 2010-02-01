@@ -33,6 +33,7 @@
 #include FT_FREETYPE_H
 
 #include <driver/fontrenderer.h>
+#include <driver/encoding.h>
 
 #include <system/debug.h>
 
