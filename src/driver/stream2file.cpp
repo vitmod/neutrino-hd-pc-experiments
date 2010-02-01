@@ -55,7 +55,12 @@
 #include <libgen.h>
 
 #include <record_cs.h>
+#if HAVE_COOL_HARDWARE
 #include <driver/vfd.h>
+#endif
+#if HAVE_TRIPLEDRAGON
+#include <driver/lcdd.h>
+#endif
 #include <zapit/cam.h>
 #include <zapit/channel.h>
 

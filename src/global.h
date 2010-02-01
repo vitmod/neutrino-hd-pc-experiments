@@ -40,8 +40,14 @@
 
 #include "driver/fontrenderer.h"
 #include "driver/rcinput.h"
+#if HAVE_COOL_HARDWARE
 #include "driver/vfd.h"
 #include "driver/rfmod.h"
+#endif
+#if HAVE_TRIPLEDRAGON
+#include "driver/lcdd.h"
+#define CVFD CLCD
+#endif
 
 #include "system/localize.h"
 #include "system/settings.h"
@@ -85,6 +91,7 @@ NEUTRINO_CPP  CInfoViewer		*g_InfoViewer;
 NEUTRINO_CPP  EventList			*g_EventList;
 
 NEUTRINO_CPP CLocaleManager		*g_Locale;
+#if HAVE_COOL_HARDWARE
 NEUTRINO_CPP RFmod		*g_RFmod;
-
+#endif
 #endif /* __neutrino_global_h__ */

@@ -35,7 +35,9 @@
 #include <zapit/frontend_c.h>
 #include <zapit/satconfig.h>
 
+#if HAVE_COOL_HARDWARE
 #include "driver/vfd.h"
+#endif
 
 extern double gotoXXLatitude, gotoXXLongitude;
 extern int gotoXXLaDirection, gotoXXLoDirection;

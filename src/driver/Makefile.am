@@ -43,6 +43,9 @@ INCLUDES += \
 	-I$(top_srcdir)/lib/libcoolstream
 endif
 if BOXTYPE_TRIPLE
+libneutrino_driver_a_SOURCES += \
+	lcdfontrenderer.cpp \
+	lcdd.cpp
 INCLUDES += \
 	-I$(top_srcdir)/lib/libtriple
 endif
