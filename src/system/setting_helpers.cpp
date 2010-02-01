@@ -41,7 +41,10 @@
 #include <signal.h>
 #include "libnet.h"
 
+#if HAVE_COOL_HARDWARE
 #include <coolstream/control.h>
+#include <pwrmngr.h>
+#endif
 
 #include <config.h>
 
@@ -57,10 +60,9 @@
 #include <gui/plugins.h>
 #include <daemonc/remotecontrol.h>
 #include <xmlinterface.h>
-#include <audio_cs.h>
-#include <video_cs.h>
-#include <dmx_cs.h>
-#include <pwrmngr.h>
+#include <audio.h>
+#include <video.h>
+#include <dmx.h>
 #include "libdvbsub/dvbsub.h"
 #include "libtuxtxt/teletext.h"
 

@@ -29,8 +29,10 @@
 #include <zapit/settings.h>  // DEMUX_DEVICE
 #include <zapit/types.h>
 #include <zapit/bouquets.h>
+#if HAVE_COOL_HARDWARE
 #include <zapit/frontend_c.h>
-#include <dmx_cs.h>
+#endif
+#include <dmx.h>
 
 #define SDT_SIZE 1026
 

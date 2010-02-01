@@ -44,8 +44,7 @@
 #include <gui/pictureviewer.h>
 #include <global.h>
 //#include <cnxtfb.h>
-#include <video_cs.h>
-#include <init_cs.h>
+#include <video.h>
 extern cVideo * videoDecoder;
 
 extern CPictureViewer * g_PicViewer;

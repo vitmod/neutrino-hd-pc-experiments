@@ -28,10 +28,10 @@
 #include <zapit/descriptors.h>
 #include <zapit/debug.h>
 #include <zapit/pmt.h>
-#include <dmx_cs.h>
+#include <dmx.h>
 
 #include <dvb-ci.h>
-#include <linux/dvb/dmx.h>
+//#include <linux/dvb/dmx.h>
 
 #define PMT_SIZE 1024
 #define RECORD_MODE 0x4

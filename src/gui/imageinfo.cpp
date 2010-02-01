@@ -35,7 +35,7 @@
 #include <daemonc/remotecontrol.h>
 
 #include <system/flashtool.h>
-#include <video_cs.h>
+#include <video.h>
 
 extern cVideo * videoDecoder;
 

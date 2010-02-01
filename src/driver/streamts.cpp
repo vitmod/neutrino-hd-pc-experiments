@@ -20,7 +20,7 @@
 
 #include <string.h>
 
-#include <dmx_cs.h>
+#include <dmx.h>
 #include <zapit/cam.h>
 #include <zapit/channel.h>
 

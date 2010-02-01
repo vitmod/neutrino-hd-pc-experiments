@@ -126,11 +126,13 @@
 #include <timerdclient/timerdmsg.h>
 #include <zapit/satconfig.h>
 
+#if HAVE_COOL_HARDWARE
 #include <init_cs.h>
-#include <video_cs.h>
-#include <audio_cs.h>
-#include <zapit/frontend_c.h>
 #include <pwrmngr.h>
+#endif
+#include <video.h>
+#include <audio.h>
+#include <zapit/frontend_c.h>
 
 #include <string.h>
 #include <linux/reboot.h>
