@@ -197,8 +197,10 @@ extern bool timeset; // sectionsd
 
 extern cVideo * videoDecoder;
 extern cAudio * audioDecoder;
+#if HAVE_COOL_HARDWARE
 cPowerManager *powerManager;
 cCpuFreqManager * cpuFreq;
+#endif
 
 int prev_video_mode;
 
@@ -252,7 +254,9 @@ static char **global_argv;
 
 //static CTimingSettingsNotifier timingsettingsnotifier;
 CFontSizeNotifier fontsizenotifier;
+#if HAVE_COOL_HARDWARE
 CFanControlNotifier * funNotifier;
+#endif
 
 extern const char * locale_real_names[]; /* #include <system/locals_intern.h> */
 // USERMENU
@@ -2312,7 +2316,9 @@ int CNeutrinoApp::run(int argc, char **argv)
 {
 	CmdParser(argc, argv);
 
+#if HAVE_COOL_HARDWARE
 	init_cs_api();
+#endif
 
 	CHintBox * hintBox;
 
@@ -2363,6 +2369,7 @@ int CNeutrinoApp::run(int argc, char **argv)
 	if(display_language_selection)
 		videoDecoder->ShowPicture(DATADIR "/neutrino/icons/start.jpg");
 
+#if HAVE_COOL_HARDWARE
 	powerManager = new cPowerManager;
 
 	if (powerManager) {
@@ -2372,7 +2379,7 @@ int CNeutrinoApp::run(int argc, char **argv)
 
 	cpuFreq = new cCpuFreqManager();
 	cpuFreq->SetCpuFreq(g_settings.cpufreq * 1000 * 1000);
-
+#endif
 
 	dvbsub_init();
 
@@ -3208,8 +3215,10 @@ printf("NeutrinoMessages::EVT_BOUQUETSCHANGED\n");fflush(stdout);
 		if(!recordingstatus && was_record && (!data)) {
 			g_Zapit->setStandby(true);
 			was_record = 0;
+#if HAVE_COOL_HARDWARE
 			if( mode == mode_standby )
 				cpuFreq->SetCpuFreq(g_settings.standby_cpufreq * 1000 * 1000);
+#endif
 		}
 		if( mode == mode_standby && data )
 			was_record = 1;
@@ -3220,8 +3229,10 @@ printf("NeutrinoMessages::EVT_BOUQUETSCHANGED\n");fflush(stdout);
 		return messages_return::handled;
 	}
 	else if (msg == NeutrinoMessages::RECORD_START) {
+#if HAVE_COOL_HARDWARE
 		if( mode == mode_standby )
 			cpuFreq->SetCpuFreq(g_settings.cpufreq * 1000 * 1000);
+#endif
 
 		if(autoshift) {
 			stopAutoRecord();
@@ -3266,8 +3277,10 @@ printf("NeutrinoMessages::EVT_BOUQUETSCHANGED\n");fflush(stdout);
 				puts("[neutrino.cpp] executing " NEUTRINO_RECORDING_ENDED_SCRIPT ".");
 				if (system(NEUTRINO_RECORDING_ENDED_SCRIPT) != 0)
 					perror(NEUTRINO_RECORDING_ENDED_SCRIPT " failed");
+#if HAVE_COOL_HARDWARE
 				if( mode == mode_standby )
 					cpuFreq->SetCpuFreq(g_settings.standby_cpufreq * 1000 * 1000);
+#endif
 			}
 		}
 		else if(nextRecordingInfo!=NULL) {
@@ -3598,6 +3611,7 @@ void CNeutrinoApp::ExitRun(const bool /*write_si*/, int retcode)
 
 			system("/bin/sync");
 			system("/bin/umount -a");
+#if HAVE_COOL_HARDWARE
 			cpuFreq->SetCpuFreq(g_settings.standby_cpufreq * 1000 * 1000);
 			powerManager->SetStandby(true, true);
 			int fspeed = 0;
@@ -3607,9 +3621,11 @@ void CNeutrinoApp::ExitRun(const bool /*write_si*/, int retcode)
 				powerManager->Close();
 				delete powerManager;
 			}
-
+#endif
 			delete moviePlayerGui;
+#if HAVE_COOL_HARDWARE
 			shutdown_cs_api();
+#endif
 
 			system("/etc/init.d/rcK");
 			CVFD::getInstance()->ShowIcon(VFD_ICON_CAM1, true);
@@ -3632,8 +3648,10 @@ void CNeutrinoApp::ExitRun(const bool /*write_si*/, int retcode)
 			if (g_RCInput != NULL)
 				delete g_RCInput;
 
+#if HAVE_COOL_HARDWARE
 			int fspeed = 0;
 			funNotifier->changeNotify(NONEXISTANT_LOCALE, (void *) &fspeed);
+#endif
 			CVFD::getInstance()->ShowText((char *) "Rebooting...");
 
 			delete frameBuffer;
@@ -3959,22 +3977,30 @@ void CNeutrinoApp::standbyMode( bool bOnOff )
 
 		lastMode = mode;
 		mode = mode_standby;
+#if HAVE_COOL_HARDWARE
 		int fspeed = 1;
 		funNotifier->changeNotify(NONEXISTANT_LOCALE, (void *) &fspeed);
+#endif
 
 		frameBuffer->setActive(false);
 		// Active standby on
+#if HAVE_COOL_HARDWARE
 		powerManager->SetStandby(true, false);
 		if(!was_record)
 			cpuFreq->SetCpuFreq(g_settings.standby_cpufreq * 1000 * 1000);
+#endif
 	} else {
 		// Active standby off
+#if HAVE_COOL_HARDWARE
 		cpuFreq->SetCpuFreq(g_settings.cpufreq * 1000 * 1000);
 
 		powerManager->SetStandby(false, false);
+#endif
 		frameBuffer->setActive(true);
 
+#if HAVE_COOL_HARDWARE
 		funNotifier->changeNotify(NONEXISTANT_LOCALE, (void*) &g_settings.fan_speed);
+#endif
 		puts("[neutrino.cpp] executing " NEUTRINO_LEAVE_STANDBY_SCRIPT ".");
 		if (system(NEUTRINO_LEAVE_STANDBY_SCRIPT) != 0)
 			perror(NEUTRINO_LEAVE_STANDBY_SCRIPT " failed");
@@ -4602,6 +4628,7 @@ void stop_daemons(bool stopall)
 	CVFD::getInstance()->Clear();
 	if(stopall) {
 		delete moviePlayerGui;
+#if HAVE_COOL_HARDWARE
 		if (cpuFreq)
 			cpuFreq->SetCpuFreq(g_settings.cpufreq * 1000 * 1000);
 		if (powerManager) {
@@ -4614,6 +4641,7 @@ void stop_daemons(bool stopall)
 			delete powerManager;
 		}
 		shutdown_cs_api();
+#endif
 	}
 }
 

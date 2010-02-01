@@ -292,6 +292,7 @@ public:
         int exec(CMenuTarget* parent, const std::string& actionKey);
 };
 
+#if HAVE_COOL_HARDWARE
 class CFanControlNotifier : public CChangeObserver
 {
 public:
@@ -303,4 +304,5 @@ class CCpuFreqNotifier : public CChangeObserver
 public:
         bool changeNotify(const neutrino_locale_t, void * data);
 };
+#endif
 #endif

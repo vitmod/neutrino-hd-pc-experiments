@@ -369,6 +369,7 @@ bool CLcdNotifier::changeNotify(const neutrino_locale_t, void *)
 	return true;
 }
 
+#if HAVE_RFMOD
 int CRfExec::exec(CMenuTarget* /*parent*/, const std::string& /*actionKey*/)
 {
 	g_RFmod->init();
@@ -396,6 +397,7 @@ bool CRfNotifier::changeNotify(const neutrino_locale_t OptionName, void * val)
 	}
 	return true;
 }
+#endif
 
 bool CPauseSectionsdNotifier::changeNotify(const neutrino_locale_t, void * Data)
 {
@@ -950,6 +952,7 @@ int CDataResetNotifier::exec(CMenuTarget* /*parent*/, const std::string& actionK
 	return true;
 }
 
+#if HAVE_COOL_HARDWARE
 bool CFanControlNotifier::changeNotify(const neutrino_locale_t, void * data)
 {
 	int cfd, ret;
@@ -982,3 +985,4 @@ bool CCpuFreqNotifier::changeNotify(const neutrino_locale_t, void * data)
 	cpuFreq->SetCpuFreq(freq);
 	return true;
 }
+#endif

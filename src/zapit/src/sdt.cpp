@@ -138,7 +138,9 @@ int nvod_service_ids(
 	return -1;
 }
 
+#if HAVE_COOL_HARDWARE
 extern CFrontend *frontend;
+#endif
 int parse_sdt(
 	t_transport_stream_id *p_transport_stream_id,
 	t_original_network_id *p_original_network_id,
@@ -175,7 +177,11 @@ int parse_sdt(
 
 	int flen;
 	bool cable_hack_done = false;
+#if HAVE_COOL_HARDWARE
 	bool cable = (frontend->getInfo()->type == FE_QAM);
+#else
+	bool cable = false;
+#endif
 #if 1
 	flen = 5;
 	memset(filter, 0x00, DMX_FILTER_SIZE);

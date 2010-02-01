@@ -19,5 +19,7 @@ libneutrino_gui_widget_a_SOURCES = \
 	drawable.cpp hintboxext.cpp helpbox.cpp mountchooser.cpp \
 	listframe.cpp msgbox.cpp textbox.cpp progressbar.cpp
 
+#	rgbcsynccontroler.cpp \
+#
 libneutrino_gui_widget2_a_SOURCES = \
 	progresswindow.cpp vfdcontroler.cpp

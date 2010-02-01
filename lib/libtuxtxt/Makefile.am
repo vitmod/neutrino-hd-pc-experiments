@@ -3,6 +3,8 @@ INCLUDES = \
 	-I$(top_srcdir)/lib/libcoolstream \
 	-I$(top_srcdir)/src
 
+AM_CXXFLAGS = @FREETYPE_CFLAGS@
+
 AM_CPPFLAGS = -fno-rtti -fno-exceptions
 
 noinst_LIBRARIES = libtuxtxt.a
