@@ -13,7 +13,7 @@ libtriple_a_SOURCES = \
 	dmx_td.cpp \
 	video_td.cpp \
 	audio_td.cpp \
-	init_cs.cpp \
+	init_td.cpp \
 	playback_td.cpp \
 	pwrmngr.cpp \
 	record_td.cpp
