@@ -240,7 +240,10 @@ SMSKeyInput * c_SMSKeyInput;
 CMoviePlayerGui* moviePlayerGui;
 CAudioSelectMenuHandler  *audio_menu;
 CPictureViewer * g_PicViewer;
+#if HAVE_COOL_HARDWARE
+/* TODO: implement CAM handler for TD */
 CCAMMenuHandler * g_CamHandler;
+#endif
 
 //int g_ChannelMode = LIST_MODE_PROV;
 
@@ -319,7 +322,9 @@ static void initGlobals(void)
 	g_Locale        = new CLocaleManager;
 	g_PluginList    = NULL;
 	InfoClock =  NULL;
+#if HAVE_COOL_HARDWARE
 	g_CamHandler = NULL;
+#endif
 }
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2422,8 +2427,10 @@ int CNeutrinoApp::run(int argc, char **argv)
 	int dy = 0;
 	frameBuffer->getIconSize(NEUTRINO_ICON_VOLUME,&dx,&dy);
 	g_volscale = new CProgressBar(true, dy*12.5, dy, 50, 100, 80, true);
+#if HAVE_COOL_HARDWARE
 	g_CamHandler = new CCAMMenuHandler();
 	g_CamHandler->init();
+#endif
 
 	audio_menu = new CAudioSelectMenuHandler;
 
@@ -2597,7 +2604,9 @@ int CNeutrinoApp::run(int argc, char **argv)
 	hintBox->hide();
 	delete hintBox;
 
+#if HAVE_COOL_HARDWARE
 	cDvbCi::getInstance()->SetHook(CISendMessage);
+#endif
 	RealRun(mainMenu);
 
 	ExitRun(true);
@@ -2997,12 +3006,13 @@ int CNeutrinoApp::handleMsg(const neutrino_msg_t msg, neutrino_msg_data_t data)
 		return( res & ( 0xFFFFFFFF - messages_return::unhandled ) );
 	}
 
+#if HAVE_COOL_HARDWARE
 	/* we assume g_CamHandler free/delete data if needed */
 	res = g_CamHandler->handleMsg(msg, data);
 	if( res != messages_return::unhandled ) {
 		return(res & (0xFFFFFFFF - messages_return::unhandled));
 	}
-
+#endif
 	/* ================================== KEYS ================================================ */
 	if( msg == CRCInput::RC_ok || msg == CRCInput::RC_sat || msg == CRCInput::RC_favorites) {
 		if( (mode == mode_tv) || (mode == mode_radio) || (mode == mode_ts)) {

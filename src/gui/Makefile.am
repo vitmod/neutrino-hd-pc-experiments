@@ -36,7 +36,11 @@ libneutrino_gui_a_SOURCES = \
 	plugins.cpp imageinfo.cpp audio_select.cpp moviebrowser.cpp movieinfo.cpp
 
 libneutrino_gui2_a_SOURCES = \
-	color.cpp alphasetup.cpp motorcontrol.cpp hdd_menu.cpp cam_menu.cpp infoclock.cpp upnpbrowser.cpp
+	color.cpp alphasetup.cpp motorcontrol.cpp hdd_menu.cpp infoclock.cpp upnpbrowser.cpp
+
+if BOXTYPE_COOL
+libneutrino_gui2_a_SOURCES += cam_menu.cpp
+endif
 
 libtimerlist_a_SOURCES = \
 	timerlist.cpp
