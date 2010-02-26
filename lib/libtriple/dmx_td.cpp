@@ -114,7 +114,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 		fprintf(stderr, "cDemux::sectionFilter #%d: len too long: %d, FILTER_LENGTH: %d\n", num, len, FILTER_LENGTH);
 
 	flt.pid = pid;
-	flt.filter_length = FILTER_LENGTH;
+	flt.filter_length = len + 2;
 	flt.filter[0] = filter[0];
 	flt.mask[0] = mask[0];
 	flt.timeout = timeout;
@@ -123,7 +123,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 	if (negmask != NULL)
 	{
 		flt.positive[0] = negmask[0];
-		memcpy(&flt.positive[3], negmask + 1, len - 1);
+		memcpy(&flt.positive[3], &negmask[1], len - 1);
 	}
 
 	flt.flags = XPDF_ONESHOT | XPDF_IMMEDIATE_START;
