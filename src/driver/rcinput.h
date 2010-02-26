@@ -191,6 +191,16 @@ class CRCInput
 			RC_games	= KEY_GAMES,
 			RC_next		= KEY_NEXT,
 			RC_prev		= KEY_PREVIOUS,
+			/* tripledragon keys */
+			RC_eject	= KEY_EJECTCD,
+			RC_aux		= KEY_AUX,          /* 0x186 */
+			RC_timer	= KEY_TIME,
+
+			RC_tttv		= KEY_FN_F1,
+			RC_ttzoom	= KEY_FN_F2,
+			RC_ttreveal	= KEY_FN_F3,
+			RC_zoomin	= KEY_FN_F4,
+			RC_zoomout	= KEY_FN_F5,
 
 			RC_timeout	= 0xFFFFFFFF,
 			RC_nokey	= 0xFFFFFFFE
