@@ -18,6 +18,8 @@ libtriple_a_SOURCES = \
 	pwrmngr.cpp \
 	record_td.cpp
 
+#libtriple_a_LIBADD = $(top_builddir)/src/driver/libneutrino_driver.a
+
 #	cool.cpp
 #	dvb-ci.cpp \
 #	dvbci_session.cpp \

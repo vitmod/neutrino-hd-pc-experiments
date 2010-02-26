@@ -38,6 +38,9 @@
 #include <hardware/tddevices.h>
 #define VIDEO_DEVICE "/dev/" DEVICE_NAME_VIDEO
 
+cVideo * videoDecoder = NULL;
+int system_rev = 0;
+
 extern struct Ssettings settings;
 
 cVideo::cVideo(int, void *, void *)
@@ -138,23 +141,13 @@ int cVideo::getAspectRatio(void)
 }
 #endif
 
-#if 1
-int cVideo::setCroppingMode(void)
+int cVideo::setCroppingMode(vidDispMode_t format)
 {
-	fprintf(stderr, "cVideo::setCroppingMode\n");
-	return 0;
-}
-#else
-int cVideo::setCroppingMode(video_displayformat_t format)
-{
-#ifdef HAVE_TRIPLEDRAGON
 	croppingMode = format;
-#endif
 	const char *format_string[] = { "panscan", "letterbox", "center_cutout", "unknown" };
 	DBG("setting cropping mode to %s", format_string[format]);
-	return fop(ioctl, VIDEO_SET_DISPLAY_FORMAT, format);
+	return fop(ioctl, MPEG_VID_SET_DISPMODE, format);
 }
-#endif
 
 #ifndef HAVE_TRIPLEDRAGON
 video_stream_source_t cVideo::getSource(void)
@@ -240,6 +233,8 @@ int cVideo::setBlank(int)
 int cVideo::SetVideoSystem(int video_system, bool remember)
 {
 	fprintf(stderr, "cVideo::setVideoSystem(%d, %d)\n", video_system, remember);
+	if (video_system > VID_DISPFMT_SECAM || video_system < 0)
+		video_system = VID_DISPFMT_PAL;
         return fop(ioctl, MPEG_VID_SET_DISPFMT, video_system);
 }
 
@@ -248,11 +243,38 @@ int cVideo::getPlayState(void)
 	return playstate;
 }
 
+void cVideo::SetVideoMode(analog_mode_t mode)
+{
+	fprintf(stderr, "cVideo::setVideoMode(%d)\n", mode);
+}
+
+void cVideo::ShowPicture(const char * fname)
+{
+	fprintf(stderr, "cVideo::ShowPicture: %s\n", fname);
+}
+
+void cVideo::StopPicture()
+{
+	fprintf(stderr, "cVideo::StopPicture()\n");
+}
+
+void cVideo::Standby(unsigned int bOn)
+{
+	fprintf(stderr, "cVideo::Standby: %d\n", bOn);
+}
+
+int cVideo::getBlank(void)
+{
+	fprintf(stderr, "cVideo::getBlank\n");
+	return 0;
+}
+
 #if 0
 int cVideo::setVideoOutput(vidOutFmt_t arg)
 {
 	return fop(ioctl, MPEG_VID_SET_OUTFMT, arg);
 }
+#endif
 
 /* set zoom in percent (100% == 1:1) */
 int cVideo::setZoom(int zoom)
@@ -267,7 +289,7 @@ int cVideo::setZoom(int zoom)
 
 	if (zoom == 100)
 	{
-		setCroppingMode(getCroppingMode());
+		setCroppingMode(croppingMode);
 		return fop(ioctl, MPEG_VID_SCALE_OFF);
 	}
 
@@ -282,7 +304,7 @@ int cVideo::setZoom(int zoom)
 	memset(&s, 0, sizeof(s));
 	if (zoom > 100)
 	{
-		vidDispSize_t x = getAspectRatio();
+		vidDispSize_t x = (vidDispSize_t)getAspectRatio();
 		if (x == VID_DISPSIZE_4x3 && croppingMode == VID_DISPMODE_NORM)
 		{
 			s.src.hori_size = 720;
@@ -320,11 +342,12 @@ int cVideo::setZoom(int zoom)
 	DBG("setZoom: %d%% src: %d:%d:%d:%d dst: %d:%d:%d:%d", zoom,
 		s.src.hori_off,s.src.vert_off,s.src.hori_size,s.src.vert_size,
 		s.des.hori_off,s.des.vert_off,s.des.hori_size,s.des.vert_size);
-	fop(ioctl, VIDEO_SET_DISPLAY_FORMAT, VID_DISPMODE_SCALE);
+	fop(ioctl, MPEG_VID_SET_DISPMODE, VID_DISPMODE_SCALE);
 	fop(ioctl, MPEG_VID_SCALE_ON);
 	return fop(ioctl, MPEG_VID_SET_SCALE_POS, &s);
 }
 
+#if 0
 int cVideo::getZoom(void)
 {
 	return *zoomvalue;
@@ -337,12 +360,10 @@ void cVideo::setZoomAspect(int index)
 	else
 		zoomvalue = &z[index];
 }
+#endif
 
-void cVideo::setPig(int x, int y, int w, int h, bool /*aspect*/)
+void cVideo::Pig(int x, int y, int w, int h, int /*osd_w*/, int /*osd_h*/)
 {
-	/* the aspect parameter is intended for maintaining
-	   correct aspect of the PIG... => not yet implemented */
-	/* all values zero -> reset ("hide_pig()") */
 	if (x + y + w + h == 0)
 	{
 		setZoom(-1);
@@ -359,11 +380,12 @@ void cVideo::setPig(int x, int y, int w, int h, bool /*aspect*/)
 	DBG("setPig src: %d:%d:%d:%d dst: %d:%d:%d:%d",
 		s.src.hori_off,s.src.vert_off,s.src.hori_size,s.src.vert_size,
 		s.des.hori_off,s.des.vert_off,s.des.hori_size,s.des.vert_size);
-	fop(ioctl, VIDEO_SET_DISPLAY_FORMAT, VID_DISPMODE_SCALE);
+	fop(ioctl, MPEG_VID_SET_DISPMODE, VID_DISPMODE_SCALE);
 	fop(ioctl, MPEG_VID_SCALE_ON);
 	fop(ioctl, MPEG_VID_SET_SCALE_POS, &s);
 }
 
+#if 0
 int cVideo::VdecIoctl(int request, int arg)
 {
 	int ret = 0;
@@ -376,3 +398,55 @@ int cVideo::VdecIoctl(int request, int arg)
 	return ret;
 }
 #endif
+
+void cVideo::getPictureInfo(int &width, int &height, int &rate)
+{
+	VIDEOINFO v;
+	/* this memset silences *TONS* of valgrind warnings */
+	memset(&v, 0, sizeof(v));
+	quiet_fop(ioctl, MPEG_VID_GET_V_INFO, &v);
+	rate = (int)v.frame_rate;
+	width = (int)v.h_size;
+	height = (int)v.v_size;
+}
+
+void cVideo::SetSyncMode(AVSYNC_TYPE /*Mode*/)
+{
+	fprintf(stderr, "cVideo::%s\n", __FUNCTION__);
+};
+
+int cVideo::SetStreamType(VIDEO_FORMAT type)
+{
+	char *aVIDEOFORMAT[] = {
+	"VIDEO_FORMAT_MPEG2",
+	"VIDEO_FORMAT_MPEG4",
+	"VIDEO_FORMAT_VC1",
+	"VIDEO_FORMAT_JPEG",
+	"VIDEO_FORMAT_GIF",
+	"VIDEO_FORMAT_PNG"
+	};
+
+	printf("cVideo::SetStreamType - type=%s\n", aVIDEOFORMAT[type]);
+#if 0
+	int streamtype = VIDEO_STREAMTYPE_MPEG2;
+
+	switch(type)
+	{
+	default:
+	case VIDEO_FORMAT_MPEG2:
+		streamtype = VIDEO_STREAMTYPE_MPEG2;
+		break;
+	case VIDEO_FORMAT_MPEG4:
+		streamtype = VIDEO_STREAMTYPE_MPEG4_H264;
+		break;
+	case VIDEO_FORMAT_VC1:
+		streamtype = VIDEO_STREAMTYPE_VC1;
+		break;
+	}
+
+	if (ioctl(privateData->m_fd, VIDEO_SET_STREAMTYPE, streamtype) < 0)
+		printf("VIDEO_SET_STREAMTYPE failed(%m)");
+#endif
+	return 0;
+}
+

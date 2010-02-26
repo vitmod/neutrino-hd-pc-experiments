@@ -9,6 +9,8 @@
 #define AUDIO_DEVICE "/dev/" DEVICE_NAME_AUDIO
 #include "audio_td.h"
 
+cAudio * audioDecoder = NULL;
+
 cAudio::cAudio(void *, void *, void *)
 {
 	fd = -1;
@@ -160,6 +162,15 @@ void cAudio::SetSpdifDD(bool /*enable*/)
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
 };
 
+void ScheduleMute(bool /*On*/)
+{
+	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+};
+
+void EnableAnalogOut(bool /*enable*/)
+{
+	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+};
 
 #if 0
 int CAudio::setBypassMode(int disable)
