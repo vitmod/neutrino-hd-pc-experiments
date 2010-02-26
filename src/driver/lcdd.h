@@ -133,7 +133,7 @@ class CLCD
 		LcdFontRenderClass		*fontRenderer;
 		FontsDef			fonts;
 
-#define LCD_NUMBER_OF_BACKGROUNDS 6
+#define LCD_NUMBER_OF_BACKGROUNDS 5
 		raw_display_t                   background[LCD_NUMBER_OF_BACKGROUNDS];
 
 		MODES				mode;

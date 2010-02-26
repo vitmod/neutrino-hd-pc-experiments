@@ -174,16 +174,15 @@ enum backgrounds {
 	BACKGROUND_POWER = 1,
 	BACKGROUND_LCD2  = 2,
 	BACKGROUND_LCD3  = 3,
-	BACKGROUND_LCD   = 4,
-	BACKGROUND_LCD4  = 5
+	BACKGROUND_LCD   = 4
+//	BACKGROUND_LCD4  = 5
 };
 const char * const background_name[LCD_NUMBER_OF_BACKGROUNDS] = {
 	"setup",
 	"power",
 	"lcd2",
 	"lcd3",
-	"lcd",
-	"lcd4"
+	"lcd"
 };
 #define NUMBER_OF_PATHS 2
 const char * const background_path[NUMBER_OF_PATHS] = {
@@ -864,7 +863,7 @@ void CLCD::setMode(const MODES m, const char * const title)
 			showPercentOver(percentOver, false, mode);
 			break;
 		case 3:
-			display.load_screen(&(background[BACKGROUND_LCD4]));
+			display.load_screen(&(background[BACKGROUND_LCD3]));
 			showVolume(volume, false);
 			showPercentOver(percentOver, false, mode);
 			break;
@@ -1048,6 +1047,31 @@ void CLCD::pause()
 	display.pause();
 }
 
+void CLCD::ShowIcon(vfd_icon icon, bool show)
+{
+	fprintf(stderr, "CLCD::ShowIcon(%d, %d)\n", icon, show);
+}
+
+void CLCD::Lock()
+{
+/*
+	if(!has_lcd) return;
+	creat("/tmp/vfd.locked", 0);
+*/
+}
+
+void CVFD::Unlock()
+{
+/*
+	if(!has_lcd) return;
+	unlink("/tmp/vfd.locked");
+*/
+}
+
+void CLCD::Clear()
+{
+	return;
+}
 
 #ifdef LCD_UPDATE
 /*****************************************************************************************/
