@@ -13,10 +13,9 @@ INCLUDES = \
 	@FREETYPE_CFLAGS@ \
 	-I$(top_srcdir)/lib
 
-noinst_LIBRARIES = libneutrino_driver.a libneutrino_driver_netfile.a
+noinst_LIBRARIES = libneutrino_driver.a libneutrino_driver_netfile.a libneutrino_driver_ringbuffer.a
 
 libneutrino_driver_a_SOURCES = \
-	ringbuffer.c \
 	encoding.cpp \
 	fontrenderer.cpp \
 	framebuffer.cpp \
@@ -34,6 +33,9 @@ libneutrino_driver_a_SOURCES = \
 	genpsi.c \
 	streamts.cpp \
 	rfmod.cpp
+
+libneutrino_driver_ringbuffer_a_SOURCES = \
+	ringbuffer.c
 
 if BOXTYPE_COOL
 libneutrino_driver_a_SOURCES += \
