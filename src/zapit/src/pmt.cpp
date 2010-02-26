@@ -30,7 +30,9 @@
 #include <zapit/pmt.h>
 #include <dmx.h>
 
+#if HAVE_COOL_HARDWARE
 #include <dvb-ci.h>
+#endif
 //#include <linux/dvb/dmx.h>
 
 #define PMT_SIZE 1024
@@ -402,13 +404,17 @@ int parse_pmt(CZapitChannel * const channel)
 	}
 	delete dmx;
 
+#if HAVE_COOL_HARDWARE
 	extern cDvbCi *ci;
+#endif
 
 	curpmtpid = channel->getPmtPid();
 	pmtlen= ((buffer[1]&0xf)<<8) + buffer[2] +3;
 
 	if(!(currentMode & RECORD_MODE) && !scan_runs) {
+#if HAVE_COOL_HARDWARE
 		ci->SendPMT(buffer, pmtlen);
+#endif
 		fout = fopen("/tmp/pmt.tmp","wb");
 		if(fout != NULL) {
 			if ((int) fwrite(buffer, sizeof(unsigned char), pmtlen, fout) != pmtlen) {

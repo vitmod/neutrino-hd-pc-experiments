@@ -37,6 +37,8 @@
 
 #if HAVE_COOL_HARDWARE
 #include "driver/vfd.h"
+#else
+#include <libtriple/td-compat/td-value-compat.h>
 #endif
 
 extern double gotoXXLatitude, gotoXXLongitude;
@@ -164,6 +166,19 @@ CFrontend::CFrontend(int num)
 	curfe.u.qpsk.fec_inner = FEC_3_4;
 	curfe.u.qam.fec_inner = FEC_3_4;
 	curfe.u.qam.modulation = QAM_64;
+
+#if HAVE_TRIPLEDRAGON
+	/* the order of those events was empirically determined (and by strace'ing the original app)
+	   I have no idea if this is the best or the most efficient way to set up the frontend, but
+	   it seems to work */
+	fop(ioctl, IOC_TUNER_DISEQC_MODE, DISEQC_MODE_CMD_ONLY);
+	fop(ioctl, IOC_TUNER_LNBLOOPTHROUGH, 0);
+	fop(ioctl, IOC_TUNER_SET_STANDBY, 0);
+	fop(ioctl, IOC_TUNER_HARDRESET);
+	fop(ioctl, IOC_TUNER_INIT);
+	fop(ioctl, IOC_TUNER_LNB_ENABLE, 1);
+	fop(ioctl, IOC_TUNER_LNB_SET_HORIZONTAL);
+#endif
 }
 
 CFrontend::~CFrontend(void)
@@ -177,6 +192,15 @@ void CFrontend::Open(void)
 {
 	printf("[fe0] open frontend\n");
 
+#if HAVE_TRIPLEDRAGON
+	if (fd < 0)
+	{
+		fd = open("/dev/stb/tdtuner0", O_RDWR|O_NONBLOCK);
+		if (fd < 0)
+			ERROR("open /dev/stb/tdtuner0");
+		info.type = FE_QPSK;
+	}
+#else
 	char filename[128];
 
 	sprintf(filename, "/dev/dvb/adapter0/frontend%d", fenumber);
@@ -189,6 +213,7 @@ void CFrontend::Open(void)
 		printf("[fe0] frontend fd %d type %d\n", fd, info.type);
 	}
 //FIXME info.type = FE_QAM;
+#endif
 
 	currentVoltage = SEC_VOLTAGE_OFF;
 	secSetVoltage(SEC_VOLTAGE_13, 15);
@@ -359,8 +384,12 @@ struct dvb_frontend_parameters CFrontend::getFrontend(void) const
 uint32_t CFrontend::getBitErrorRate(void) const
 {
 	uint32_t ber = 0;
+#if HAVE_TRIPLEDRAGON
+	fop(ioctl, IOC_TUNER_SET_ERROR_SOURCE, QPSKERRORSOURCE_QPSK_BIT_ERRORS);
+	fop(ioctl, IOC_TUNER_GET_ERRORS, &ber);
+#else
 	fop(ioctl, FE_READ_BER, &ber);
-
+#endif
 	return ber;
 }
 
@@ -382,7 +411,12 @@ uint16_t CFrontend::getSignalNoiseRatio(void) const
 uint32_t CFrontend::getUncorrectedBlocks(void) const
 {
 	uint32_t blocks = 0;
+#if HAVE_TRIPLEDRAGON
+	fop(ioctl, IOC_TUNER_SET_ERROR_SOURCE, QPSKERRORSOURCE_PACKET_ERRORS);
+	fop(ioctl, IOC_TUNER_GET_ERRORS, &blocks);
+#else
 	fop(ioctl, FE_READ_UNCORRECTED_BLOCKS, &blocks);
+#endif
 
 	return blocks;
 }
@@ -401,7 +435,11 @@ struct dvb_frontend_event CFrontend::getEvent(void)
 	int tmsec = msec;
 
 	pfd.fd = fd;
+#if HAVE_TRIPLEDRAGON
+	pfd.events = POLLIN | POLLPRI | POLLERR;
+#else
 	pfd.events = POLLIN | POLLPRI;
+#endif
 	pfd.revents = 0;
 
 	memset(&event, 0, sizeof(struct dvb_frontend_event));
@@ -426,7 +464,11 @@ struct dvb_frontend_event CFrontend::getEvent(void)
 		if (pfd.revents & (POLLIN | POLLPRI)) {
 			TIMER_STOP("[fe0] poll has event after");
 			memset(&event, 0, sizeof(struct dvb_frontend_event));
+#if HAVE_TRIPLEDRAGON
+			ret = ioctl(fd, FE_READ_STATUS, &event.status);
+#else
 			ret = ioctl(fd, FE_GET_EVENT, &event);
+#endif
 			if (ret < 0) {
 				perror("CFrontend::getEvent ioctl");
 				continue;
@@ -560,6 +602,44 @@ void CFrontend::getDelSys(int f, int m, char *&fec, char *&sys, char *&mod)
 	}
 }
 
+bool td_fe_set_property(int devfd, struct dtv_properties *p)
+{
+#if 0
+		p->props[VOLTAGE].u.data	= currentVoltage;
+		p->props[TONE].u.data		= currentToneMode;
+		p->props[FREQUENCY].u.data	= feparams->frequency;
+		p->props[SYMBOL_RATE].u.data	= feparams->u.qpsk.symbol_rate;
+		p->props[INNER_FEC].u.data	= fec; /*_inner*/ ;
+#endif
+	tunersetup t;
+	t.fec =		0; //dvbfec2tdfec((fe_code_rate_t)p->props[INNER_FEC].u.data);
+	t.frequency =	p->props[FREQUENCY].u.data;
+	t.symbolrate =	p->props[SYMBOL_RATE].u.data / 1000;
+	t.polarity =	p->props[VOLTAGE].u.data;
+	t.highband =	(p->props[TONE].u.data == SEC_TONE_ON);
+
+	/* again, the order of events as strace'd in the original app */
+	ioctl(devfd, IOC_TUNER_LOCKLED_ENABLE, 0);
+	ioctl(devfd, IOC_TUNER_STOPTHAT);
+
+	int freq_range = t.symbolrate / 500;		/* empirically: SR 22000, FRANGE = 44 */
+	ioctl(devfd, IOC_TUNER_SET_FRANGE, freq_range);	/* SR 27500, FRANGE = 55, 29900 == 59 */
+
+	fprintf(stderr, "%s: freq: %u sym: %hu fec: %hu pol: %hu high: %hu frange: %d\n", __FUNCTION__,
+		t.frequency, t.symbolrate, t.fec, t.polarity, t.highband, freq_range);
+#if 0
+	if (finetune)
+		fop(ioctl, IOC_TUNER_SETUP_NBF, &t2);
+	else
+#endif
+	if (ioctl (devfd, IOC_TUNER_SETUP_NB, t) == -1)
+	{
+		perror("td_fe_set_property IOC_TUNER_SETUP_NB");
+		return false;
+	}
+	return true;
+}
+
 int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool /*nowait*/)
 {
 	fe_delivery_system delsys = SYS_DVBS;
@@ -652,7 +732,7 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 	char *f, *s, *m;
 	getDelSys(fec_inner, modulation, f, s, m);
 	//printf("[fe0] DEMOD: FEC %s system %s modulation %s pilot %s\n", f, s, m, pilot == PILOT_ON ? "on" : "off");
-
+#if !HAVE_TRIPLEDRAGON
 	{
 		TIMER_INIT();
 		TIMER_START();
@@ -662,7 +742,7 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 		}
 		TIMER_STOP("[fe0] FE_SET_PROPERTY clear took");
 	}
-
+#endif
 	struct dtv_properties *p;
 	switch (info.type) {
 	case FE_QPSK:
@@ -692,6 +772,7 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 		return 0;
 	}
 
+#if !HAVE_TRIPLEDRAGON
 	struct dvb_frontend_event ev;
 
 	{
@@ -717,10 +798,14 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 #endif
 		TIMER_STOP("[fe0] clear events took");
 	}
+#endif
 	printf("[fe0] DEMOD: FEC %s system %s modulation %s pilot %s\n", f, s, m, pilot == PILOT_ON ? "on" : "off");
 
 	tuned = false;
-
+#if HAVE_TRIPLEDRAGON
+	if (!td_fe_set_property(fd, p))
+		return false;
+#else
 	{
 		TIMER_INIT();
 		TIMER_START();
@@ -730,6 +815,7 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 		}
 		TIMER_STOP("[fe0] FE_SET_PROPERTY took");
 	}
+#endif
 	{
 		TIMER_INIT();
 		TIMER_START();
@@ -748,13 +834,23 @@ void CFrontend::secSetTone(const fe_sec_tone_mode_t toneMode, const uint32_t ms)
 	if (info.type != FE_QPSK)
 		return;
 
-	if (currentToneMode == toneMode)
-		return;
+//	if (currentToneMode == toneMode)
+//		return;
 
 	printf("[fe%d] tone %s\n", fenumber, toneMode == SEC_TONE_ON ? "on" : "off");
 	TIMER_INIT();
 	TIMER_START();
-	if (fop(ioctl, FE_SET_TONE, toneMode) == 0) {
+#if HAVE_TRIPLEDRAGON
+	unsigned int tm;
+	if (toneMode == SEC_TONE_ON)
+		tm = 1;
+	else
+		tm = 0;
+	if (ioctl(fd, IOC_TUNER_22KHZ_ENABLE, tm) == 0)
+#else
+	if (fop(ioctl, FE_SET_TONE, toneMode) == 0)
+#endif
+	{
 		currentToneMode = toneMode;
 		usleep(1000 * ms);
 	}
@@ -772,7 +868,13 @@ void CFrontend::secSetVoltage(const fe_sec_voltage_t voltage, const uint32_t ms)
 
 	TIMER_INIT();
 	TIMER_START();
-	if (fop(ioctl, FE_SET_VOLTAGE, voltage) == 0) {
+#if HAVE_TRIPLEDRAGON
+	unsigned int pol = (voltage == SEC_VOLTAGE_13);
+	if (fop(ioctl, IOC_TUNER_LNB_SET_POLARISATION, pol) == 0)
+#else
+	if (fop(ioctl, FE_SET_VOLTAGE, voltage) == 0)
+#endif
+	{
 		currentVoltage = voltage;
 		usleep(1000 * ms);	// FIXME : is needed ?
 	}
@@ -783,6 +885,12 @@ void CFrontend::secResetOverload(void)
 {
 }
 
+uint32_t CFrontend::getDiseqcReply(const int /*timeout_ms*/) const
+{
+	return 0;
+}
+
+#if !HAVE_TRIPLEDRAGON
 void CFrontend::sendDiseqcCommand(const struct dvb_diseqc_master_cmd *cmd, const uint32_t ms)
 {
 	printf("[fe0] Diseqc cmd: ");
@@ -793,16 +901,52 @@ void CFrontend::sendDiseqcCommand(const struct dvb_diseqc_master_cmd *cmd, const
 		usleep(1000 * ms);
 }
 
-uint32_t CFrontend::getDiseqcReply(const int /*timeout_ms*/) const
-{
-	return 0;
-}
-
 void CFrontend::sendToneBurst(const fe_sec_mini_cmd_t burst, const uint32_t ms)
 {
 	if (fop(ioctl, FE_DISEQC_SEND_BURST, burst) == 0)
 		usleep(1000 * ms);
 }
+#else
+void CFrontend::sendDiseqcCommand(const struct dvb_diseqc_master_cmd *cmd, const uint32_t ms)
+{
+	char raw[1 + 3 + 3]; // length_byte + frame + addr + cmd + params[3]
+	memset(&raw[0], 0, 7);
+	raw[0] = cmd->msg_len;
+	memcpy(&raw[1], cmd->msg, cmd->msg_len);
+	WARN("ms: %d raw: len:%02x frame:%02x addr:%02x cmd:%02x para:%02x:%02x:%02x",
+		ms, raw[0],raw[1],raw[2],raw[3],raw[4],raw[5],raw[6]);
+
+	if (fop(ioctl, IOC_TUNER_DISEQC_SEND, &raw) == 0)
+		usleep(1000 * ms);
+}
+
+void CFrontend::sendToneBurst(const fe_sec_mini_cmd_t burst, const uint32_t ms)
+{
+	int ret;
+	/* even though it looks useful, this ioctl seems not to be used in the original soft */
+	// fop(ioctl, IOC_TUNER_DISEQC_MODE, DISEQC_MODE_BURST_ONLY);
+	switch (burst)
+	{
+	case SEC_MINI_A:
+		ret = fop(ioctl, IOC_TUNER_DISEQC_SEND_BURST, 0);
+//		ret = ioctl(fd, IOC_TUNER_DISEQC_SEND, "\x04\xe0\x10\x38\xf0");
+		break;
+	case SEC_MINI_B:
+		ret = fop(ioctl, IOC_TUNER_DISEQC_SEND_BURST, 1);
+//		ret = ioctl(fd, IOC_TUNER_DISEQC_SEND, "\x04\xe0\x10\x38\xf4");
+		break;
+	default:
+		WARN("not MINI_A(%d)/MINI_B(%d): %d!", SEC_MINI_A, SEC_MINI_B, burst);
+		return;
+	}
+	if (ret < 0)
+	{
+		WARN("IOC_TUNER_DISEQC_SEND_BURST failed (%m)");
+		return;
+	}
+	usleep(ms * 1000);
+}
+#endif
 
 void CFrontend::setDiseqcType(const diseqc_t newDiseqcType)
 {

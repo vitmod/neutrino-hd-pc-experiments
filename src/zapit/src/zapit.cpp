@@ -52,7 +52,9 @@
 #include <zapit/zapit.h>
 #include <xmlinterface.h>
 
+#if HAVE_COOL_HARDWARE
 #include <dvb-ci.h>
+#endif
 
 #include <zapit/satconfig.h>
 #include <zapit/frontend_c.h>
@@ -77,7 +79,9 @@ int zapit_ready;
 int abort_zapit;
 
 extern void send_ca_id(int);
+#if HAVE_COOL_HARDWARE
 cDvbCi * ci;
+#endif
 //cDvbCiSlot *one, *two;
 extern cDemux * pmtDemux;
 
@@ -2036,8 +2040,10 @@ int zapit_main_thread(void *data)
 	audioDecoder = new cAudio(audioDemux->getBuffer(), videoDecoder->GetTVEnc(), videoDecoder->GetTVEncSD());
 	videoDecoder->SetAudioHandle(audioDecoder->GetHandle());
 
+#if HAVE_COOL_HARDWARE
 	ci = cDvbCi::getInstance();
 	ci->Init();
+#endif
 
 	scan_runs = 0;
 	found_channels = 0;
