@@ -1,3 +1,4 @@
+#include <config.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
@@ -8,7 +9,7 @@
 
 #include <cerrno>
 
-#include <dmx_cs.h>
+#include <zapit/include/dmx.h>
 
 #include "Debug.hpp"
 #include "PacketQueue.hpp"

@@ -1,3 +1,4 @@
+#error "dvb-ci.h"
 #ifndef __DVBCI_H
 #define __DVBCI_H
 

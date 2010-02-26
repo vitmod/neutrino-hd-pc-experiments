@@ -14,7 +14,7 @@
  ******************************************************************************/
 
 #include "tuxtxt.h"
-#include <dmx_cs.h>
+#include <zapit/include/dmx.h>
 #include "driver/framebuffer.h"
 #include "teletext.h"
 

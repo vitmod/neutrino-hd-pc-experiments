@@ -6,17 +6,20 @@ extern "C" {
 #include <sys/ioctl.h>
 #include <hardware/xp/xp_osd_user.h>
 }
+#if defined DMX_FILTER_SIZE
+#undef DMX_FILTER_SIZE
+#endif
 #define DMX_FILTER_SIZE FILTER_LENGTH
 
 typedef enum
 {
-	DMX_VIDEO_CHANNEL = DMX_PES_VIDEO,
-	DMX_AUDIO_CHANNEL = DMX_PES_AUDIO,
-	DMX_PCR_ONLY_CHANNEL = DMX_PES_PCR,
+	DMX_VIDEO_CHANNEL = 1,
+	DMX_AUDIO_CHANNEL,
 	DMX_PES_CHANNEL,
 	DMX_PSI_CHANNEL,
 	DMX_PIP_CHANNEL,
 	DMX_TP_CHANNEL,
+	DMX_PCR_ONLY_CHANNEL
 } DMX_CHANNEL_TYPE;
 
 class cDemux

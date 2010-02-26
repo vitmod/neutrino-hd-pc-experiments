@@ -30,7 +30,11 @@
 #include <unistd.h>        /* close, read */
 #include <dmxapi.h>
 
+#if HAVE_TRIPLEDRAGON
+#include <dmx_td.h>
+#else
 #include <dmx_cs.h>
+#endif
 
 bool setfilter(const int fd, const uint16_t pid, const uint8_t filter, const uint8_t mask, const uint32_t  flags)
 {

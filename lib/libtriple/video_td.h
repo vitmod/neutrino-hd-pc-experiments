@@ -3,7 +3,7 @@
 
 #include <hardware/vid/vid_inf.h>
 #define video_format_t          vidDispSize_t
-#define video_displayformat_t   vidDispMode_t
+//#define video_displayformat_t   vidDispMode_t
 
 
 typedef enum {
@@ -106,7 +106,7 @@ class cVideo
 		/* apparently we cannot query the driver's state
 		   => remember it */
 		video_play_state_t playstate;
-		video_displayformat_t croppingMode;
+		vidDispMode_t croppingMode;
 		int z[2]; /* zoomvalue for 4:3 (0) and 16:9 (1) in percent */
 		int *zoomvalue;
 		void *blank_data[2]; /* we store two blank MPEGs (PAL/NTSC) in there */
@@ -134,7 +134,7 @@ class cVideo
 		int setAspectRatio(int aspect, int mode);
 
 		/* cropping mode */
-		int setCroppingMode(void);
+		int setCroppingMode(vidDispMode_t x = VID_DISPMODE_NORM);
 
 		/* get play state */
 		int getPlayState(void);
@@ -157,6 +157,7 @@ class cVideo
 		void StopPicture();
 		void Standby(unsigned int bOn);
 		void Pig(int x, int y, int w, int h, int osd_w = 1064, int osd_h = 600);
+		int setZoom(int);
 		void setContrast(int val);
 		void SetVideoMode(analog_mode_t mode);
 		void SetDBDR(int dbdr);

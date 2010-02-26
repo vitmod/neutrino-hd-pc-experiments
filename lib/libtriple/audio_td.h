@@ -75,6 +75,8 @@ class cAudio
 		bool IsHdmiDDSupported() { return false; };
 		void SetHdmiDD(bool) { return; };
 		void SetSpdifDD(bool enable);
+		void ScheduleMute(bool On);
+		void EnableAnalogOut(bool enable);
 };
 
 #endif

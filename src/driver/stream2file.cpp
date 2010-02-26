@@ -54,11 +54,12 @@
 #include <signal.h>
 #include <libgen.h>
 
-#include <record_cs.h>
 #if HAVE_COOL_HARDWARE
+#include <record_cs.h>
 #include <driver/vfd.h>
 #endif
 #if HAVE_TRIPLEDRAGON
+#include <record_td.h>
 #include <driver/lcdd.h>
 #endif
 #include <zapit/cam.h>
