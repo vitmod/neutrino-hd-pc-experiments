@@ -310,6 +310,7 @@ int Font::getHeight(void)
 	return height;
 }
 
+#if 0
 int UTF8ToUnicode(const char * &text, const bool utf8_encoded) // returns -1 on error
 {
 	int unicode_value;
@@ -354,6 +355,7 @@ int UTF8ToUnicode(const char * &text, const bool utf8_encoded) // returns -1 on 
 
 	return unicode_value;
 }
+#endif
 
 void Font::RenderString(int x, int y, const int width, const char *text, const unsigned char color, const int boxheight, const bool utf8_encoded)
 {
