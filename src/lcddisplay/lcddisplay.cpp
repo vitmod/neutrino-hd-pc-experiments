@@ -385,18 +385,18 @@ bool CLCDDisplay::paintIcon(std::string filename, int x, int y, bool invert)
 	uint16_t         height;
 	unsigned char *  pixpos;
 
-	int fd;
+	int _fd;
 	filename = iconBasePath + filename;
 
-	fd = open(filename.c_str(), O_RDONLY );
+	_fd = open(filename.c_str(), O_RDONLY );
 	
-	if (fd==-1)
+	if (_fd==-1)
 	{
 		printf("\nerror while loading icon: %s\n\n", filename.c_str() );
 		return false;
 	}
 
-	read(fd, &header, sizeof(struct rawHeader));
+	read(_fd, &header, sizeof(struct rawHeader));
 
 	stride = ((header.width_hi << 8) | header.width_lo) >> 1;
 	height = (header.height_hi << 8) | header.height_lo;
@@ -418,7 +418,7 @@ bool CLCDDisplay::paintIcon(std::string filename, int x, int y, bool invert)
 		y++;
 	}
 	
-	close(fd);
+	close(_fd);
 	return true;
 }
 

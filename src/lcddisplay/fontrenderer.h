@@ -45,7 +45,12 @@ class LcdFontRenderClass;
 class LcdFont
 {
         CLCDDisplay             *framebuffer;
+#if FREETYPE_MAJOR >= 2 && FREETYPE_MINOR >= 3
         FTC_ImageTypeRec        font;
+#else
+        FTC_Image_Desc  font;
+        FT_Face                 face;
+#endif
         LcdFontRenderClass *renderer;
         FT_Size                 size;
 
@@ -78,7 +83,11 @@ class LcdFontRenderClass
 	FTC_SBitCache	sbitsCache;          /* the glyph small bitmaps cache   */
 
 	FTC_FaceID getFaceID(const char *family, const char *style);
+#if FREETYPE_MAJOR >= 2 && FREETYPE_MINOR >= 3
 	FT_Error getGlyphBitmap(FTC_ImageType font, FT_ULong glyph_index, FTC_SBit *sbit);
+#else
+	FT_Error getGlyphBitmap(FTC_Image_Desc *font, FT_ULong glyph_index, FTC_SBit *sbit);
+#endif
 
 	public:
 		pthread_mutex_t render_mutex;
