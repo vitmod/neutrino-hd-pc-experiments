@@ -40,13 +40,16 @@ libneutrino_driver_ringbuffer_a_SOURCES = \
 if BOXTYPE_COOL
 libneutrino_driver_a_SOURCES += \
 	vfd.cpp
+
 INCLUDES += \
 	-I$(top_srcdir)/lib/libcoolstream
 endif
 if BOXTYPE_TRIPLE
 libneutrino_driver_a_SOURCES += \
+	newclock.cpp \
 	lcdfontrenderer.cpp \
 	lcdd.cpp
+
 INCLUDES += \
 	-I$(top_srcdir)/lib/libtriple
 endif

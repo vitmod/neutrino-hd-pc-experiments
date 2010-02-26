@@ -20,6 +20,7 @@ if BOXTYPE_COOL
 INCLUDES += -I$(top_srcdir)/lib/libcoolstream
 endif
 if BOXTYPE_TRIPLE
+SUBDIRS += lcddisplay
 INCLUDES += -I$(top_srcdir)/lib/libtriple
 endif
 
@@ -80,6 +81,8 @@ neutrino_LDADD += \
 endif
 if BOXTYPE_TRIPLE
 neutrino_LDADD += \
-	$(top_builddir)/lib/libtriple/libtriple.a
+	$(top_builddir)/lib/libtriple/libtriple.a \
+	driver/libneutrino_driver_ringbuffer.a \
+	$(top_builddir)/src/lcddisplay/liblcddisplay.a
 endif
 

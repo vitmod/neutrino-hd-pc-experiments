@@ -729,7 +729,11 @@ const lcd_setting_struct_t lcd_setting[SNeutrinoSettings::LCD_SETTING_COUNT] =
 	{"lcd_inverse"          , DEFAULT_LCD_INVERSE          },
 	{"lcd_show_volume"      , DEFAULT_LCD_SHOW_VOLUME      },
 	{"lcd_autodimm"         , DEFAULT_LCD_AUTODIMM         }
+#if HAVE_TRIPLEDRAGON
+	,{ "lcd_epgmode"        , 0 /*DEFAULT_LCD_EPGMODE*/ }
+#endif
 };
+
 
 /**************************************************************************************
 *          CNeutrinoApp -  loadSetup, load the application-settings                   *
@@ -1891,7 +1895,9 @@ printf("CNeutrinoApp::SetChannelMode %d\n", newmode);
 /**************************************************************************************
 *          CNeutrinoApp -  run, the main runloop                                      *
 **************************************************************************************/
+#if HAVE_COOL_HARDWARE
 extern int cnxt_debug;
+#endif
 extern int sections_debug;
 extern int zapit_debug;
 
@@ -1924,7 +1930,9 @@ void CNeutrinoApp::CmdParser(int argc, char **argv)
 			x++;
 		}
 		else if ((!strcmp(argv[x], "-xd"))) {
+#if HAVE_COOL_HARDWARE
 			cnxt_debug = 1;
+#endif
 		}
 		else if ((!strcmp(argv[x], "-sd"))) {
 			sections_debug = 1;
@@ -2366,9 +2374,11 @@ int CNeutrinoApp::run(int argc, char **argv)
 	audioDecoder->setVolume(g_settings.current_volume, g_settings.current_volume);
 	audioDecoder->SetHdmiDD(g_settings.hdmi_dd ? true : false);
 	audioDecoder->SetSpdifDD(g_settings.spdif_dd ? true : false);
+#if HAVE_COOL_HARDWARE
 	audioDecoder->EnableAnalogOut(g_settings.analog_out ? true : false);
 
 	videoDecoder->SetDBDR(g_settings.video_dbdr);
+#endif
 	audioSetupNotifier->changeNotify(LOCALE_AUDIOMENU_AVSYNC, NULL);
 
 	if(display_language_selection)

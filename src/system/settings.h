@@ -38,7 +38,11 @@
 
 #include <string>
 
+#ifdef HAVE_COOL_HARDWARE
 #define VIDEOMENU_VIDEOMODE_OPTION_COUNT 12
+#else
+#define VIDEOMENU_VIDEOMODE_OPTION_COUNT 3
+#endif
 
 struct SNeutrinoSettings
 {
@@ -371,9 +375,9 @@ struct SNeutrinoSettings
 		LCD_INVERSE            ,
 		LCD_SHOW_VOLUME        ,
 		LCD_AUTODIMM           ,
+#if HAVE_TRIPLEDRAGON
 		LCD_EPGMODE            ,
-		LCD_BIAS               ,
-
+#endif
 		LCD_SETTING_COUNT
 	};
 	int lcd_setting[LCD_SETTING_COUNT];

@@ -240,6 +240,7 @@ const CMenuOptionChooser::keyval VIDEOMENU_43MODE_OPTIONS[VIDEOMENU_43MODE_OPTIO
 	//{ 2, LOCALE_VIDEOMENU_AUTO } // whatever is this auto mode, it seems its totally broken
 };
 
+#if HAVE_COOL_HARDWARE
 /* numbers corresponding to video.cpp from zapit */
 //#define VIDEOMENU_VIDEOMODE_OPTION_COUNT 11
 const CMenuOptionChooser::keyval_ext VIDEOMENU_VIDEOMODE_OPTIONS[VIDEOMENU_VIDEOMODE_OPTION_COUNT] =
@@ -258,7 +259,14 @@ const CMenuOptionChooser::keyval_ext VIDEOMENU_VIDEOMODE_OPTIONS[VIDEOMENU_VIDEO
 	{ 6, NONEXISTANT_LOCALE, "1080i 60Hz"	},
 	{ VIDEO_STD_AUTO, NONEXISTANT_LOCALE, "Auto"   }
 };
-
+#else
+const CMenuOptionChooser::keyval_ext VIDEOMENU_VIDEOMODE_OPTIONS[VIDEOMENU_VIDEOMODE_OPTION_COUNT] =
+{
+	{ VID_DISPFMT_PAL,	NONEXISTANT_LOCALE, "PAL"	},
+	{ VID_DISPFMT_SECAM,	NONEXISTANT_LOCALE, "SECAM"	},
+	{ VID_DISPFMT_NTSC,	NONEXISTANT_LOCALE, "NTSC"	}
+};
+#endif
 #define VIDEOMENU_DBDR_OPTION_COUNT 3
 const CMenuOptionChooser::keyval VIDEOMENU_DBDR_OPTIONS[VIDEOMENU_DBDR_OPTION_COUNT] =
 {
@@ -400,7 +408,9 @@ bool CVideoSettings::changeNotify(const neutrino_locale_t OptionName, void *)
 	}
 	else if (ARE_LOCALES_EQUAL(OptionName, LOCALE_VIDEOMENU_DBDR))
 	{
+#if HAVE_COOL_HARDWARE
 		videoDecoder->SetDBDR(g_settings.video_dbdr);
+#endif
 	}
 	else if (ARE_LOCALES_EQUAL(OptionName, LOCALE_VIDEOMENU_VCRSIGNAL))
 	{
