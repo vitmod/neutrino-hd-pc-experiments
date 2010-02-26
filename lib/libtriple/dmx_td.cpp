@@ -42,7 +42,6 @@ cDemux::~cDemux()
 
 bool cDemux::Open(DMX_CHANNEL_TYPE pes_type, void * /*hVideoBuffer*/, int uBufferSize)
 {
-	fprintf(stderr, "cDemux::Open #%d pes_type: %s (%d), uBufferSize: %d\n", num, aDMXCHANNELTYPE[pes_type], pes_type, uBufferSize);
 	char devname[32];
 	if (fd > -1)
 		fprintf(stderr, "cDemux::Open FD ALREADY OPENED? fd = %d\n", fd);
@@ -53,9 +52,14 @@ bool cDemux::Open(DMX_CHANNEL_TYPE pes_type, void * /*hVideoBuffer*/, int uBuffe
 		fprintf(stderr, "cDemux::Open %s: %m", devname);
 		return false;
 	}
-	fprintf(stderr, "cDemux::Open #%d devname %s, fd: %d\n", num, devname, fd);
-	if (ioctl(fd, DEMUX_SET_BUFFER_SIZE, uBufferSize) < 0)
-		fprintf(stderr, "cDemux::Open DEMUX_SET_BUFFER_SIZE failed (%m)\n");
+	fprintf(stderr, "cDemux::Open #%d pes_type: %s (%d), uBufferSize: %d devname: %s fd: %d\n",
+			num, aDMXCHANNELTYPE[pes_type], pes_type, uBufferSize, devname, fd);
+	if (uBufferSize > 0)
+	{
+		/* probably uBufferSize == 0 means "use default size". TODO: find a reasonable default */
+		if (ioctl(fd, DEMUX_SET_BUFFER_SIZE, uBufferSize) < 0)
+			fprintf(stderr, "cDemux::Open DEMUX_SET_BUFFER_SIZE failed (%m)\n");
+	}
 
 	dmx_type = pes_type;
 	return true;
@@ -104,7 +108,6 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 			   const unsigned char * const negmask)
 {
 	struct demux_filter_para flt;
-
 	memset(&flt, 0, sizeof(flt));
 
 	if (len > FILTER_LENGTH - 2)
@@ -209,7 +212,7 @@ fprintf(stderr,"filter:  ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",filte
 fprintf(stderr,"mask  :  ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",mask  [i]);fprintf(stderr,"\n");
 if(negmask!=NULL){fprintf(stderr,"negmask: ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",negmask[i]);fprintf(stderr,"\n");}
 
-	ioctl(fd, DEMUX_STOP);
+	ioctl (fd, DEMUX_STOP);
 	if (ioctl(fd, DEMUX_FILTER_SET, &flt) < 0)
 		return false;
 
