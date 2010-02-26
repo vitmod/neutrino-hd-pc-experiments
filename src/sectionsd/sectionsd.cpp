@@ -8698,6 +8698,8 @@ printf("pausing...\n");
 
         if(dmxUTC) dmxUTC->Stop();
 
+	pthread_cancel(threadTOT);
+
 printf("join 1\n");
         pthread_join(threadTOT, NULL);
         if(dmxUTC) delete dmxUTC;
