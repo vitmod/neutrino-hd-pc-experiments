@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include <string>
 #include <hardware/tddevices.h>
@@ -97,10 +98,53 @@ bool cDemux::Stop(void)
 	return true;
 }
 
-int cDemux::Read(unsigned char *buff, int len, int /*Timeout*/)
+int cDemux::Read(unsigned char *buff, int len, int timeout)
 {
-fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d\n", __FUNCTION__, num, fd, aDMXCHANNELTYPE[dmx_type], len);
-	return read(fd, buff, len);
+fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n", __FUNCTION__, num, fd, aDMXCHANNELTYPE[dmx_type], len, timeout);
+	int rc;
+	struct pollfd ufds;
+	ufds.fd = fd;
+	ufds.events = POLLIN;
+	ufds.revents = 0;
+
+	if (timeout > 0)
+	{
+		rc = ::poll(&ufds, 1, timeout);
+
+		if (!rc)
+			return 0; // timeout
+		else if (rc < 0)
+		{
+			/* we consciously ignore EINTR, since it does not happen in practice */
+			return -1;
+		}
+		if ((ufds.revents & POLLERR) != 0) /* POLLERR means buffer error, i.e. buffer overflow */
+		{
+			fprintf(stderr, "[cDemux::Read] received POLLERR, fd %d\n", fd);
+			return -1;
+		}
+		if (!(ufds.revents&POLLIN))
+		{
+			fprintf(stderr, "cDemux::%s: not ufds.revents&POLLIN, please report!\n", __FUNCTION__);
+			// POLLHUP, beim dmx bedeutet das DMXDEV_STATE_TIMEDOUT
+			// kommt wenn ein Timeout im Filter gesetzt wurde
+			// dprintf("revents: 0x%hx\n", ufds.revents);
+			// usleep(100*1000UL); // wir warten 100 Millisekunden bevor wir es nochmal probieren
+			// if (timeoutInMSeconds <= 200000)
+			return 0; // timeout
+			// timeoutInMSeconds -= 200000;
+			// goto retry;
+		}
+	}
+
+	int r = ::read(fd, buff, len);
+
+	fprintf(stderr, "fd %d ret: %d\n", fd, r);
+	if (r >= 0)
+		return r;
+
+	perror ("[cDemux::Read] read");
+	return -1;
 }
 
 bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filter,
