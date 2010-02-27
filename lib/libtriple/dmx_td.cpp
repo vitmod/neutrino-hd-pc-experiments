@@ -170,7 +170,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 		memcpy(&flt.positive[3], &negmask[1], len - 1);
 	}
 
-	flt.flags = XPDF_ONESHOT | XPDF_IMMEDIATE_START;
+	flt.flags = /*XPDF_ONESHOT |*/ XPDF_IMMEDIATE_START;
 
 	int to = 0;
 	switch (filter[0]) {
