@@ -350,7 +350,7 @@ CZapitClient::responseGetLastChannel load_settings(void)
  *
  */
 static int pmt_update_fd = -1;
-static bool update_pmt = true;
+static bool update_pmt = false; //true;
 
 int zapit(const t_channel_id channel_id, bool in_nvod, bool forupdate = 0, bool /*nowait*/ = 0)
 {
