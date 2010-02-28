@@ -57,6 +57,9 @@
 #define KEY_BLUE         0x191
 #endif
 
+#ifndef KEY_GAMES
+#define KEY_GAMES        0x1a1   /* Media Select Games */
+#endif
 /* SAGEM remote controls have the following additional keys */
 
 #ifndef KEY_TOPLEFT
