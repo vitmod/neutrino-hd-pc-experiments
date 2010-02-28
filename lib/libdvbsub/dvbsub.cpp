@@ -90,6 +90,9 @@ int dvbsub_pause()
 
 int dvbsub_start(int pid)
 {
+// FIXME!
+return 0;
+// FIXME!
 	if(!dvbsub_paused && (pid == 0)) {
 		return 0;
 	}
