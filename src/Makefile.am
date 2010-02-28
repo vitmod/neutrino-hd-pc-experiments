@@ -82,6 +82,7 @@ endif
 if BOXTYPE_TRIPLE
 neutrino_LDADD += \
 	$(top_builddir)/lib/libtriple/libtriple.a \
+	@DIRECTFB_LIBS@ \
 	driver/libneutrino_driver_ringbuffer.a \
 	$(top_builddir)/src/lcddisplay/liblcddisplay.a
 endif

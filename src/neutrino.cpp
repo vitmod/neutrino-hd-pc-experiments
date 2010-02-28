@@ -2329,9 +2329,7 @@ int CNeutrinoApp::run(int argc, char **argv)
 {
 	CmdParser(argc, argv);
 
-#if HAVE_COOL_HARDWARE
 	init_cs_api();
-#endif
 
 	CHintBox * hintBox;
 
@@ -3643,9 +3641,7 @@ void CNeutrinoApp::ExitRun(const bool /*write_si*/, int retcode)
 			}
 #endif
 			delete moviePlayerGui;
-#if HAVE_COOL_HARDWARE
 			shutdown_cs_api();
-#endif
 
 			system("/etc/init.d/rcK");
 			CVFD::getInstance()->ShowIcon(VFD_ICON_CAM1, true);
@@ -4660,8 +4656,8 @@ void stop_daemons(bool stopall)
 			powerManager->Close();
 			delete powerManager;
 		}
-		shutdown_cs_api();
 #endif
+		shutdown_cs_api();
 	}
 }
 
