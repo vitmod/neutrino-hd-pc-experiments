@@ -28,7 +28,7 @@ static IDirectFBSurface *dest;
 
 void init_td_api()
 {
-	fprintf(stderr, "%s:%s\n", FILENAME, __FUNCTION__);
+	fprintf(stderr, "%s:%s begin\n", FILENAME, __FUNCTION__);
 	int argc = 0;
 	DFBResult err;
 	DFBSurfaceDescription dsc;
@@ -36,6 +36,13 @@ void init_td_api()
 	int SW, SH;
 
 	DFBCHECK(DirectFBInit(&argc, NULL));
+	/* neutrino does its own VT handling */
+	DirectFBSetOption("no-vt-switch", NULL);
+	DirectFBSetOption("no-vt", NULL);
+	/* signal handling seems to interfere with neutrino */
+	DirectFBSetOption("no-sighandler", NULL);
+	/* if DirectFB grabs the remote, neutrino does not get events */
+	DirectFBSetOption("disable-module", "tdremote");
 	DFBCHECK(DirectFBCreate(&dfb));
 
 	err = dfb->SetCooperativeLevel(dfb, DFSCL_FULLSCREEN);
@@ -51,6 +58,7 @@ void init_td_api()
 	primary->Clear( primary, 0, 0, 0, 0xFF );
 	primary->GetSubSurface (primary, NULL, &dest);
 	dest->Clear( dest, 0, 0, 0, 0xFF );
+	fprintf(stderr, "%s:%s end\n", FILENAME, __FUNCTION__);
 }
 
 void shutdown_td_api()
