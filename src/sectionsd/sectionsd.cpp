@@ -8660,7 +8660,6 @@ void sectionsd_main_thread(void */*data*/)
         scanning = 0;
         timeset = true;
 printf("broadcasting...\n");
-#if !HAVE_TRIPLEDRAGON
 	pthread_mutex_lock(&timeIsSetMutex);
 	pthread_cond_broadcast(&timeIsSetCond);
 	pthread_mutex_unlock(&timeIsSetMutex);
@@ -8681,15 +8680,8 @@ printf("broadcasting...\n");
 	pthread_mutex_lock(&dmxSDT.start_stop_mutex);
 	pthread_cond_broadcast(&dmxSDT.change_cond);
 	pthread_mutex_unlock(&dmxSDT.start_stop_mutex);
-#else
-	pthread_cancel(threadTOT);
-	pthread_cancel(threadEIT);
-	pthread_cancel(threadCN);
-	pthread_cancel(threadSDT);
-#endif
 
 printf("pausing...\n");
-#if !HAVE_TRIPLEDRAGON
         dmxEIT.request_pause();
 	dmxCN.request_pause();
         dmxSDT.request_pause();
@@ -8701,7 +8693,6 @@ printf("pausing...\n");
 #endif
 #ifdef UPDATE_NETWORKS
         dmxNIT.request_pause();
-#endif
 #endif
         pthread_cancel(threadHouseKeeping);
 
