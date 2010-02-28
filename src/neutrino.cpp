@@ -2600,6 +2600,9 @@ int CNeutrinoApp::run(int argc, char **argv)
 	hdd->exec(NULL, "");
 	delete hdd;
 
+	hintBox->hide(); // InitZapper also displays a hintbox
+	delete hintBox;
+
 	InitZapper();
 	InitRecordingSettings(recordingSettings);
 	InitStreamingSettings(streamingSettings);
@@ -2608,9 +2611,6 @@ int CNeutrinoApp::run(int argc, char **argv)
 	AudioMute( current_muted, true);
 
 	SHTDCNT::getInstance()->init();
-
-	hintBox->hide();
-	delete hintBox;
 
 #if HAVE_COOL_HARDWARE
 	cDvbCi::getInstance()->SetHook(CISendMessage);
