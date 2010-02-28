@@ -6886,7 +6886,7 @@ int eit_set_update_filter(int *fd)
 	eitDmx->sectionFilter(0x12, filter, mask, 4, timeout, NULL);
 #endif
 
-        //printf("[sectionsd] start EIT update filter: current version %02X, filter %02X %02X %02X %02X, mask %02X mode %02X \n", cur_eit, dsfp.filter.filter[0], dsfp.filter.filter[1], dsfp.filter.filter[2], dsfp.filter.filter[3], dsfp.filter.mask[3], dsfp.filter.mode[3]);
+        printf("[sectionsd] start EIT update filter: current version %02X, filter %02X %02X %02X %02X, mask %02X mode %02X \n", cur_eit, filter[0], filter[1], filter[2], filter[3], mask[3], mode[3]);
         *fd = 1;
         return 0;
 }
@@ -8660,6 +8660,7 @@ void sectionsd_main_thread(void */*data*/)
         scanning = 0;
         timeset = true;
 printf("broadcasting...\n");
+#if !HAVE_TRIPLEDRAGON
 	pthread_mutex_lock(&timeIsSetMutex);
 	pthread_cond_broadcast(&timeIsSetCond);
 	pthread_mutex_unlock(&timeIsSetMutex);
@@ -8680,8 +8681,15 @@ printf("broadcasting...\n");
 	pthread_mutex_lock(&dmxSDT.start_stop_mutex);
 	pthread_cond_broadcast(&dmxSDT.change_cond);
 	pthread_mutex_unlock(&dmxSDT.start_stop_mutex);
+#else
+	pthread_cancel(threadTOT);
+	pthread_cancel(threadEIT);
+	pthread_cancel(threadCN);
+	pthread_cancel(threadSDT);
+#endif
 
 printf("pausing...\n");
+#if !HAVE_TRIPLEDRAGON
         dmxEIT.request_pause();
 	dmxCN.request_pause();
         dmxSDT.request_pause();
@@ -8693,6 +8701,7 @@ printf("pausing...\n");
 #endif
 #ifdef UPDATE_NETWORKS
         dmxNIT.request_pause();
+#endif
 #endif
         pthread_cancel(threadHouseKeeping);
 
