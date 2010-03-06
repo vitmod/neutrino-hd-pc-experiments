@@ -500,6 +500,12 @@ struct dvb_frontend_event CFrontend::getEvent(void)
 			TIMER_STOP("[fe0] poll hup after");
 			reset();
 		}
+#if HAVE_TRIPLEDRAGON
+		else if (pfd.revents & POLLERR) {
+			TIMER_STOP("[fe0] POLLERR after");
+			break;
+		}
+#endif
 		msec += TIME_STEP;
 		tmsec += TIME_STEP;
 		if (tmsec > 15000)
