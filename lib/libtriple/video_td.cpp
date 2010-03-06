@@ -404,7 +404,8 @@ void cVideo::setZoomAspect(int index)
 
 void cVideo::Pig(int x, int y, int w, int h, int /*osd_w*/, int /*osd_h*/)
 {
-	if (x + y + w + h == 0)
+	/* x = y = w = h = -1 -> reset / "hide" PIG */
+	if (x == -1 && y == -1 && w == -1 && h == -1)
 	{
 		setZoom(-1);
 		return;
