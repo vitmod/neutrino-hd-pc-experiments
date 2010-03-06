@@ -157,7 +157,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 		fprintf(stderr, "cDemux::sectionFilter #%d: len too long: %d, FILTER_LENGTH: %d\n", num, len, FILTER_LENGTH);
 
 	flt.pid = pid;
-	flt.filter_length = len + 2;
+	flt.filter_length = len + 2 * (len > 1); /* only add the two bytes if required */
 	flt.filter[0] = filter[0];
 	flt.mask[0] = mask[0];
 	flt.timeout = timeout;
@@ -169,7 +169,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 		memcpy(&flt.positive[3], &negmask[1], len - 1);
 	}
 
-	flt.flags = /*XPDF_ONESHOT |*/ XPDF_IMMEDIATE_START;
+	flt.flags = XPDF_IMMEDIATE_START;
 
 	int to = 0;
 	switch (filter[0]) {
@@ -246,15 +246,12 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 	}
 	if (timeout == 0)
 		flt.timeout = to;
-
-fprintf(stderr, "cDemux::%s #%d pid: 0x%04hx fd: %d type: %s len: %d timeout: %d flags: %x\n", __FUNCTION__, num, pid, fd, aDMXCHANNELTYPE[dmx_type], len, flt.timeout,flt.flags);
-fprintf(stderr,"filter: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.filter[i]);fprintf(stderr,"\n");
-fprintf(stderr,"mask  : ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.mask  [i]);fprintf(stderr,"\n");
-fprintf(stderr,"positi: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.positive[i]);fprintf(stderr,"\n");
-fprintf(stderr,"filter:  ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",filter[i]);fprintf(stderr,"\n");
-fprintf(stderr,"mask  :  ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",mask  [i]);fprintf(stderr,"\n");
-if(negmask!=NULL){fprintf(stderr,"negmask: ");for(int i=0;i<len;i++)fprintf(stderr,"%02hhx ",negmask[i]);fprintf(stderr,"\n");}
-
+#if 0
+	fprintf(stderr, "cDemux::%s #%d pid:0x%04hx fd:%d type:%s len:%d to:%d flags:%x\n", __FUNCTION__, num, pid, fd, aDMXCHANNELTYPE[dmx_type], len, flt.timeout,flt.flags);
+	fprintf(stderr,"filt: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.filter[i]);fprintf(stderr,"\n");
+	fprintf(stderr,"mask: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.mask  [i]);fprintf(stderr,"\n");
+	fprintf(stderr,"posi: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.positive[i]);fprintf(stderr,"\n");
+#endif
 	ioctl (fd, DEMUX_STOP);
 	if (ioctl(fd, DEMUX_FILTER_SET, &flt) < 0)
 		return false;
