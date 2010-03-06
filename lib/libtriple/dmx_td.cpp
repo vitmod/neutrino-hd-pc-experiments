@@ -100,7 +100,11 @@ bool cDemux::Stop(void)
 
 int cDemux::Read(unsigned char *buff, int len, int timeout)
 {
-fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n", __FUNCTION__, num, fd, aDMXCHANNELTYPE[dmx_type], len, timeout);
+#if 0
+	if (len != 4095 && timeout != 10)
+		fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n",
+			_FUNCTION__, num, fd, aDMXCHANNELTYPE[dmx_type], len, timeout);
+#endif
 	int rc;
 	struct pollfd ufds;
 	ufds.fd = fd;
@@ -110,7 +114,6 @@ fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n", __FUNCTI
 	if (timeout > 0)
 	{
 		rc = ::poll(&ufds, 1, timeout);
-
 		if (!rc)
 			return 0; // timeout
 		else if (rc < 0)
@@ -118,33 +121,29 @@ fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n", __FUNCTI
 			/* we consciously ignore EINTR, since it does not happen in practice */
 			return -1;
 		}
-		if ((ufds.revents & POLLERR) != 0) /* POLLERR means buffer error, i.e. buffer overflow */
+		if (ufds.revents & POLLERR) /* POLLERR means buffer error, i.e. buffer overflow */
 		{
 			fprintf(stderr, "[cDemux::Read] received POLLERR, fd %d\n", fd);
 			return -1;
 		}
-		if (!(ufds.revents&POLLIN))
+		if (ufds.revents & POLLHUP) /* we get POLLHUP if e.g. a too big DMX_BUFFER_SIZE was set */
+		{
+			fprintf(stderr, "[cDemux::Read] received POLLHUP, fd %d\n", fd);
+			return -1;
+		}
+		if (!(ufds.revents & POLLIN)) /* we requested POLLIN but did not get it? */
 		{
 			fprintf(stderr, "cDemux::%s: not ufds.revents&POLLIN, please report!\n", __FUNCTION__);
-			// POLLHUP, beim dmx bedeutet das DMXDEV_STATE_TIMEDOUT
-			// kommt wenn ein Timeout im Filter gesetzt wurde
-			// dprintf("revents: 0x%hx\n", ufds.revents);
-			// usleep(100*1000UL); // wir warten 100 Millisekunden bevor wir es nochmal probieren
-			// if (timeoutInMSeconds <= 200000)
-			return 0; // timeout
-			// timeoutInMSeconds -= 200000;
-			// goto retry;
+			return 0;
 		}
 	}
 
-	int r = ::read(fd, buff, len);
+	rc = ::read(fd, buff, len);
+	//fprintf(stderr, "fd %d ret: %d\n", fd, rc);
+	if (rc < 0)
+		perror ("[cDemux::Read] read");
 
-	fprintf(stderr, "fd %d ret: %d\n", fd, r);
-	if (r >= 0)
-		return r;
-
-	perror ("[cDemux::Read] read");
-	return -1;
+	return rc;
 }
 
 bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filter,
