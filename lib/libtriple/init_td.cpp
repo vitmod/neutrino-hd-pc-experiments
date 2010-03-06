@@ -12,6 +12,7 @@
 
 static const char * FILENAME = "init_td.cpp";
 
+static bool initialized = false;
 
 /* the super interface */
 static IDirectFB *dfb;
@@ -26,9 +27,8 @@ static IDirectFBSurface *dest;
 		DirectFBErrorFatal(#x, err );                         \
 	}
 
-void init_td_api()
+static void dfb_init()
 {
-	fprintf(stderr, "%s:%s begin\n", FILENAME, __FUNCTION__);
 	int argc = 0;
 	DFBResult err;
 	DFBSurfaceDescription dsc;
@@ -58,13 +58,28 @@ void init_td_api()
 	primary->Clear( primary, 0, 0, 0, 0xFF );
 	primary->GetSubSurface (primary, NULL, &dest);
 	dest->Clear( dest, 0, 0, 0, 0xFF );
+}
+
+static void dfb_deinit()
+{
+	dest->Release(dest);
+	primary->Release(primary);
+	dfb->Release(dfb);
+}
+
+void init_td_api()
+{
+	fprintf(stderr, "%s:%s begin, initialized = %d\n", FILENAME, __FUNCTION__, (int)initialized);
+	if (!initialized)
+		dfb_init();
+	initialized = true;
 	fprintf(stderr, "%s:%s end\n", FILENAME, __FUNCTION__);
 }
 
 void shutdown_td_api()
 {
-	fprintf(stderr, "%s:%s\n", FILENAME, __FUNCTION__);
-	dest->Release( dest );
-	primary->Release( primary );
-	dfb->Release( dfb );
+	fprintf(stderr, "%s:%s, initialized = %d\n", FILENAME, __FUNCTION__, (int)initialized);
+	if (initialized)
+		dfb_deinit();
+	initialized = false;
 }
