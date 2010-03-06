@@ -185,6 +185,13 @@ CFrontend::~CFrontend(void)
 {
 	if (diseqcType > MINI_DISEQC)
 		sendDiseqcStandby();
+#if HAVE_TRIPLEDRAGON
+	fop(ioctl, IOC_TUNER_LOCKLED_ENABLE, 0);
+	fop(ioctl, IOC_TUNER_LNB_ENABLE, 0);
+	fop(ioctl, IOC_TUNER_22KHZ_ENABLE, 0);
+	fop(ioctl, IOC_TUNER_SET_STANDBY, 1);
+	fop(ioctl, IOC_TUNER_LNBLOOPTHROUGH, 1);
+#endif
 	close(fd);
 }
 
