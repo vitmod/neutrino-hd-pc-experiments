@@ -228,7 +228,12 @@ static DMX dmxSDT(0x11, 0x42, 0xff, 0x42, 0xff, 256);
 //static DMX dmxSDT(0x11, 256);
 /* no matter how big the buffer, we will receive spurious POLLERR's in table 0x60,
    but those are not a big deal, so let's save some memory */
+#if HAVE_TRIPLEDRAGON
+/* no way can we allocate 3MB in-kernel buffers ;) */
+static DMX dmxEIT(0x12, 320);
+#else
 static DMX dmxEIT(0x12, 3000 /*320*/);
+#endif
 #ifdef ENABLE_FREESATEPG
 static DMX dmxFSEIT(3842, 320);
 #endif
