@@ -818,6 +818,11 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 
 	tuned = false;
 #if HAVE_TRIPLEDRAGON
+	if (fec_inner >= FEC_S2_QPSK_1_2)
+	{
+		fprintf(stderr, "[fe0] DEMOD: not even trying to tune to DVB-S2 channel\n");
+		return false;
+	}
 	if (!td_fe_set_property(fd, p))
 		return false;
 #else
