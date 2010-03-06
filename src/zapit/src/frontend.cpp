@@ -604,18 +604,17 @@ void CFrontend::getDelSys(int f, int m, char *&fec, char *&sys, char *&mod)
 
 bool td_fe_set_property(int devfd, struct dtv_properties *p)
 {
-#if 0
-		p->props[VOLTAGE].u.data	= currentVoltage;
-		p->props[TONE].u.data		= currentToneMode;
-		p->props[FREQUENCY].u.data	= feparams->frequency;
-		p->props[SYMBOL_RATE].u.data	= feparams->u.qpsk.symbol_rate;
-		p->props[INNER_FEC].u.data	= fec; /*_inner*/ ;
-#endif
+	/* convert dtv_properties to tunersetup... */
 	tunersetup t;
+	/* fec 0=auto, 1=1/2, 2=2/3, 3=3/4, 4=5/6, 5=7/8 */
 	t.fec =		0; //dvbfec2tdfec((fe_code_rate_t)p->props[INNER_FEC].u.data);
+	/* frequency is in kHz */
 	t.frequency =	p->props[FREQUENCY].u.data;
+	/* symbolrate is in kilo-symbols */
 	t.symbolrate =	p->props[SYMBOL_RATE].u.data / 1000;
-	t.polarity =	p->props[VOLTAGE].u.data;
+	/* polarity  0 = H, 1 = V */
+	t.polarity =	(p->props[VOLTAGE].u.data == SEC_VOLTAGE_13);
+	/* highband  0 = 22kHz off, 1 = 22kHz on */
 	t.highband =	(p->props[TONE].u.data == SEC_TONE_ON);
 
 	/* again, the order of events as strace'd in the original app */
