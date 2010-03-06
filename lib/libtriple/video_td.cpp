@@ -110,8 +110,42 @@ cVideo::~cVideo(void)
 int cVideo::setAspectRatio(int aspect, int mode)
 {
 	fprintf(stderr, "cVideo::setAspectRatio(%d, %d)\n", aspect, mode);
+	vidDispSize_t dsize = VID_DISPSIZE_UNKNOWN;
+	vidDispMode_t dmode = VID_DISPMODE_NORM;
+
+	/* values are hardcoded in neutrino_menue.cpp, "2" is 14:9 -> not used */
+	if (aspect != -1)
+	{
+		switch(aspect)
+		{
+		case 1:
+			dsize = VID_DISPSIZE_4x3;
+			break;
+		case 3:
+			dsize = VID_DISPSIZE_16x9;
+			break;
+		default:
+			break;
+		}
+		fop(ioctl, MPEG_VID_SET_DISPSIZE, dsize);
+	}
+	if (mode != -1)
+	{
+		switch(mode)
+		{
+		case DISPLAY_AR_MODE_PANSCAN:
+			// dmode = VID_DISPMODE_PANSCAN;
+			break;
+		case DISPLAY_AR_MODE_LETTERBOX:
+			dmode = VID_DISPMODE_LETTERBOX;
+			break;
+		default:
+			break;
+		}
+		setCroppingMode(dmode);
+	}
+
 	return 0;
-	//return fop(ioctl, VIDEO_SET_FORMAT, format);
 }
 
 #ifndef HAVE_TRIPLEDRAGON
@@ -137,15 +171,21 @@ int cVideo::getAspectRatio(void)
 		WARN("invalid value %d, returning VID_DISPSIZE_UNKNOWN fd: %d", v.pel_aspect_ratio, fd);
 		return VID_DISPSIZE_UNKNOWN;
 	}
-	return v.pel_aspect_ratio;
+	/* hack: coolstream apparently is "value > 2 == 16:9" */
+	return v.pel_aspect_ratio * 4;
 }
 #endif
 
 int cVideo::setCroppingMode(vidDispMode_t format)
 {
 	croppingMode = format;
-	const char *format_string[] = { "panscan", "letterbox", "center_cutout", "unknown" };
-	DBG("setting cropping mode to %s", format_string[format]);
+	const char *format_string[] = { "norm", "letterbox", "unknown", "mode_1_2", "mode_1_4", "mode_2x", "scale", "disexp" };
+
+	if (format >= VID_DISPMODE_NORM && format <= VID_DISPMODE_DISEXP)
+		fprintf(stderr, "cVideo::setCroppingMode(%d) => %s\n", format, format_string[format]);
+	else
+		fprintf(stderr, "cVideo::setCroppingMode(%d) => ILLEGAL format!\n", format);
+	//DBG("setting cropping mode to %s", format_string[format]);
 	return fop(ioctl, MPEG_VID_SET_DISPMODE, format);
 }
 
@@ -417,7 +457,7 @@ void cVideo::SetSyncMode(AVSYNC_TYPE /*Mode*/)
 
 int cVideo::SetStreamType(VIDEO_FORMAT type)
 {
-	char *aVIDEOFORMAT[] = {
+	const char *aVIDEOFORMAT[] = {
 	"VIDEO_FORMAT_MPEG2",
 	"VIDEO_FORMAT_MPEG4",
 	"VIDEO_FORMAT_VC1",
