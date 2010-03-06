@@ -486,6 +486,9 @@ struct dvb_frontend_event CFrontend::getEvent(void)
 			if (event.status & FE_HAS_LOCK) {
 				printf("[fe%d] FE_HAS_LOCK: freq %lu\n", fenumber, (long unsigned int)event.parameters.frequency);
 				tuned = true;
+#if HAVE_TRIPLEDRAGON
+				ioctl(fd, IOC_TUNER_LOCKLED_ENABLE, 1);
+#endif
 				break;
 			} else if (event.status & FE_TIMEDOUT) {
 				printf("[fe%d] FE_TIMEDOUT\n", fenumber);
