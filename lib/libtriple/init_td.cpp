@@ -10,6 +10,12 @@
 
 #include <directfb.h>
 
+extern "C" {
+#include <tdpanel/ir_ruwido.h>
+#include <hardware/avs/avs_inf.h>
+#include <hardware/avs/bios_system_config.h>
+}
+
 static const char * FILENAME = "init_td.cpp";
 
 static bool initialized = false;
@@ -80,6 +86,27 @@ static void dfb_deinit()
 	dfb->Release(dfb);
 }
 
+static void rc_init()
+{
+	/* set remote control address from bootloader config */
+	int fd = open("/dev/stb/tdsystem", O_RDWR);
+	struct BIOS_CONFIG_AREA bca;
+	unsigned short rc_addr = 0xff;
+	if (ioctl(fd, IOC_AVS_GET_LOADERCONFIG, &bca) != 0)
+		fprintf(stderr, "%s: IOC_AVS_GET_LOADERCONFIG failed: %m\n", __FUNCTION__);
+	else
+		rc_addr = bca.ir_adrs;
+	close(fd);
+	fd = open("/dev/stb/tdremote", O_RDWR);
+	if (ioctl(fd, IOC_IR_SET_ADDRESS, rc_addr) < 0)
+		fprintf(stderr, "%s: IOC_IR_SET_ADDRESS %d failed: %m\n", __FUNCTION__, rc_addr);
+	/* short delay in the driver improves responsiveness and reduces spurious
+	   "key up" events during zapping */
+	//ioctl(fd, IOC_IR_SET_DELAY, 1);  TODO: needs more work in rcinput
+	close(fd);
+	printf("%s: rc_addr=0x%02hx\n", __FUNCTION__, rc_addr);
+}
+
 void init_td_api()
 {
 	fprintf(stderr, "%s:%s begin, initialized = %d\n", FILENAME, __FUNCTION__, (int)initialized);
@@ -91,6 +118,7 @@ void init_td_api()
 		dfb_init();
 		if (setpgid(0, pid))
 			perror("setpgid");
+		rc_init();
 	}
 	initialized = true;
 	fprintf(stderr, "%s:%s end\n", FILENAME, __FUNCTION__);
