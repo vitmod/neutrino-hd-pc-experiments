@@ -19,6 +19,7 @@ static IDirectFB *dfb;
 /* the primary surface */
 static IDirectFBSurface *primary;
 static IDirectFBSurface *dest;
+static IDirectFBDisplayLayer *layer;
 
 #define DFBCHECK(x...)                                                \
 	err = x;                                                      \
@@ -43,6 +44,8 @@ static void dfb_init()
 	DirectFBSetOption("no-sighandler", NULL);
 	/* if DirectFB grabs the remote, neutrino does not get events */
 	DirectFBSetOption("disable-module", "tdremote");
+	DirectFBSetOption("disable-module", "keyboard");
+	DirectFBSetOption("disable-module", "linux_input");
 	DFBCHECK(DirectFBCreate(&dfb));
 
 	err = dfb->SetCooperativeLevel(dfb, DFSCL_FULLSCREEN);
@@ -53,17 +56,27 @@ static void dfb_init()
 	dsc.caps = DSCAPS_PRIMARY;
 
 	DFBCHECK(dfb->CreateSurface( dfb, &dsc, &primary ));
-	primary->GetPixelFormat( primary, &pixelformat );
-	primary->GetSize( primary, &SW, &SH );
-	primary->Clear( primary, 0, 0, 0, 0xFF );
-	primary->GetSubSurface (primary, NULL, &dest);
-	dest->Clear( dest, 0, 0, 0, 0xFF );
+	/* set pixel alpha mode */
+	dfb->GetDisplayLayer(dfb, DLID_PRIMARY, &layer);
+	DFBCHECK(layer->SetCooperativeLevel(layer, DLSCL_EXCLUSIVE));
+	DFBDisplayLayerConfig conf;
+	DFBCHECK(layer->GetConfiguration(layer, &conf));
+	conf.flags   = DLCONF_OPTIONS;
+	conf.options = (DFBDisplayLayerOptions)((conf.options & ~DLOP_OPACITY) | DLOP_ALPHACHANNEL);
+	DFBCHECK(layer->SetConfiguration(layer, &conf));
+
+	primary->GetPixelFormat(primary, &pixelformat);
+	primary->GetSize(primary, &SW, &SH);
+	primary->Clear(primary, 0, 0, 0, 0);
+	primary->GetSubSurface(primary, NULL, &dest);
+	dest->Clear(dest, 0, 0, 0, 0);
 }
 
 static void dfb_deinit()
 {
 	dest->Release(dest);
 	primary->Release(primary);
+	layer->Release(layer);
 	dfb->Release(dfb);
 }
 
@@ -71,7 +84,14 @@ void init_td_api()
 {
 	fprintf(stderr, "%s:%s begin, initialized = %d\n", FILENAME, __FUNCTION__, (int)initialized);
 	if (!initialized)
+	{
+		/* DirectFB does setpgid(0,0), which disconnects us from controlling terminal
+		   and thus disables e.g. ctrl-C. work around that. */
+		pid_t pid = getpgid(0);
 		dfb_init();
+		if (setpgid(0, pid))
+			perror("setpgid");
+	}
 	initialized = true;
 	fprintf(stderr, "%s:%s end\n", FILENAME, __FUNCTION__);
 }
