@@ -11,7 +11,7 @@ cDemux *videoDemux = NULL;
 cDemux *audioDemux = NULL;
 //cDemux *pcrDemux = NULL;
 
-static const char *aDMXCHANNELTYPE[] = {
+static const char *DMX_T[] = {
 	"",
 	"DMX_VIDEO_CHANNEL",
 	"DMX_AUDIO_CHANNEL",
@@ -54,7 +54,7 @@ bool cDemux::Open(DMX_CHANNEL_TYPE pes_type, void * /*hVideoBuffer*/, int uBuffe
 		return false;
 	}
 	fprintf(stderr, "cDemux::Open #%d pes_type: %s (%d), uBufferSize: %d devname: %s fd: %d\n",
-			num, aDMXCHANNELTYPE[pes_type], pes_type, uBufferSize, devname, fd);
+			num, DMX_T[pes_type], pes_type, uBufferSize, devname, fd);
 
 	dmx_type = pes_type;
 
@@ -145,7 +145,7 @@ int cDemux::Read(unsigned char *buff, int len, int timeout)
 #if 0
 	if (len != 4095 && timeout != 10)
 		fprintf(stderr, "cDemux::%s #%d fd: %d type: %s len: %d timeout: %d\n",
-			_FUNCTION__, num, fd, aDMXCHANNELTYPE[dmx_type], len, timeout);
+			__FUNCTION__, num, fd, DMX_T[dmx_type], len, timeout);
 #endif
 	int rc;
 	struct pollfd ufds;
@@ -289,7 +289,7 @@ bool cDemux::sectionFilter(unsigned short pid, const unsigned char * const filte
 	if (timeout == 0)
 		flt.timeout = to;
 #if 0
-	fprintf(stderr, "cDemux::%s #%d pid:0x%04hx fd:%d type:%s len:%d to:%d flags:%x\n", __FUNCTION__, num, pid, fd, aDMXCHANNELTYPE[dmx_type], len, flt.timeout,flt.flags);
+	fprintf(stderr, "cDemux::%s #%d pid:0x%04hx fd:%d type:%s len:%d to:%d flags:%x\n", __FUNCTION__, num, pid, fd, DMX_T[dmx_type], len, flt.timeout,flt.flags);
 	fprintf(stderr,"filt: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.filter[i]);fprintf(stderr,"\n");
 	fprintf(stderr,"mask: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.mask  [i]);fprintf(stderr,"\n");
 	fprintf(stderr,"posi: ");for(int i=0;i<FILTER_LENGTH;i++)fprintf(stderr,"%02hhx ",flt.positive[i]);fprintf(stderr,"\n");
@@ -310,7 +310,7 @@ bool cDemux::pesFilter(const unsigned short pid)
 	if ((pid >= 0x0002 && pid <= 0x000f) || pid >= 0x1fff)
 		return false;
 
-fprintf(stderr, "cDemux::%s #%d pid: 0x%04hx fd: %d type: %s\n", __FUNCTION__, num, pid, fd, aDMXCHANNELTYPE[dmx_type]);
+fprintf(stderr, "cDemux::%s #%d pid: 0x%04hx fd: %d type: %s\n", __FUNCTION__, num, pid, fd, DMX_T[dmx_type]);
 
 	if (dmx_type == DMX_TP_CHANNEL)
 	{
@@ -363,7 +363,7 @@ void *cDemux::getChannel()
 #if 0
 const DMX_CHANNEL_TYPE cDemux::getChannelType(void)
 {
-	printf("%s:%s (type=%s)\n", FILENAME, __FUNCTION__, aDMXCHANNELTYPE[type]);
+	printf("%s:%s (type=%s)\n", FILENAME, __FUNCTION__, DMX_T[type]);
 	
 	return type; 
 }
@@ -377,7 +377,7 @@ void cDemux::addPid(unsigned short Pid)
 	struct demux_pes_para p;
 	if (dmx_type != DMX_TP_CHANNEL)
 	{
-		fprintf(stderr, "cDemux::%s pes_type!=DMX_TP_CHANNEL (%s) not implemented yet! pid=%hx\n", __FUNCTION__, aDMXCHANNELTYPE[dmx_type], Pid);
+		fprintf(stderr, "cDemux::%s pes_type!=DMX_TP_CHANNEL (%s) not implemented yet! pid=%hx\n", __FUNCTION__, DMX_T[dmx_type], Pid);
 		return;
 	}
 	if (fd == -1)
