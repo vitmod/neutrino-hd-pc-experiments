@@ -151,9 +151,45 @@ int cAudio::StopClip()
 	return 0;
 };
 
-void cAudio::getAudioInfo(int &/*type*/, int &/*layer*/, int &/*freq*/, int &/*bitrate*/, int &/*mode*/)
+void cAudio::getAudioInfo(int &type, int &layer, int &freq, int &bitrate, int &mode)
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	unsigned int atype;
+	scratchl2 i;
+	if (ioctl(fd, MPEG_AUD_GET_DECTYP, &atype) < 0)
+		perror("cAudio::getAudioInfo MPEG_AUD_GET_DECTYP");
+	if (ioctl(fd, MPEG_AUD_GET_STATUS, &i) < 0)
+		perror("cAudio::getAudioInfo MPEG_AUD_GET_STATUS");
+
+	type = atype;
+#if 0
+/* this does not work, some of the values are negative?? */
+	AMPEGStatus A;
+	memcpy(&A, &i.word00, sizeof(i.word00));
+	layer   = A.audio_mpeg_layer;
+	mode    = A.audio_mpeg_mode;
+	bitrate = A.audio_mpeg_bitrate;
+	switch(A.audio_mpeg_frequency)
+#endif
+	layer   = (i.word00 >> 17) & 3;
+	mode    = (i.word00 >> 6)  & 3;
+	bitrate = (i.word00 >> 12) & 3;
+	switch((i.word00 >> 10) & 3)
+	{
+	case 0:
+		freq = 44100;
+		break;
+	case 1:
+		freq = 48000;
+		break;
+	case 2:
+		freq = 32000;
+		break;
+	default:
+		freq = 0;
+		break;
+	}
+	//fprintf(stderr, "type: %d layer: %d freq: %d bitrate: %d mode: %d\n", type, layer, freq, bitrate, mode);
 };
 
 void cAudio::SetSRS(int /*iq_enable*/, int /*nmgr_enable*/, int /*iq_mode*/, int /*iq_level*/)
