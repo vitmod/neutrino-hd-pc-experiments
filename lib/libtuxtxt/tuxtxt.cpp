@@ -1510,9 +1510,6 @@ static void* reader_thread(void * /*arg*/)
 
 void tuxtx_pause_subtitle(bool pause)
 {
-// FIXME!
-return;
-// FIXME!
 	if(!pause) {
 		printf("TuxTxt subtitle unpause, running %d pid %d page %d\n", reader_running, sub_pid, sub_page);
 		ttx_paused = 0;
