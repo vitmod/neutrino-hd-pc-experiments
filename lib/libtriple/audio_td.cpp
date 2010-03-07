@@ -130,21 +130,25 @@ void cAudio::SetSyncMode(AVSYNC_TYPE /*Mode*/)
 int cAudio::setChannel(int /*channel*/)
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	return 0;
 };
 
 int cAudio::PrepareClipPlay(int /*uNoOfChannels*/, int /*uSampleRate*/, int /*uBitsPerSample*/, int /*bLittleEndian*/)
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	return 0;
 };
 
 int cAudio::WriteClip(unsigned char * /*buffer*/, int /*size*/)
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	return 0;
 };
 
 int cAudio::StopClip()
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	return 0;
 };
 
 void cAudio::getAudioInfo(int &/*type*/, int &/*layer*/, int &/*freq*/, int &/*bitrate*/, int &/*mode*/)
