@@ -48,18 +48,10 @@ extern "C" {
 class cRecord
 {
 	private:
-		int num_apids;
-
-		int ringbuffers;
-		unsigned int ringbuffersize;
 		time_t record_start_time;
 		time_t record_end_time;
 
 		pthread_t demux_thread[MAXPIDS];
-
-		unsigned char demuxfd_count;
-		int demuxfd[MAXPIDS];
-		int dvrfd;
 
 		int file_fd;
 

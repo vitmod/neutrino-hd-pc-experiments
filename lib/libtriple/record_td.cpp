@@ -32,132 +32,74 @@
 #include <stdio.h>
 
 #include "record_td.h"
+#include "dmx_td.h"
 
 #include <xp/xp_osd_user.h>
 #include <driver/stream2file.h>
 
 static const char * FILENAME = "record_td.cpp";
 
+static cDemux *dmx = NULL;
+
 static int sync_byte_offset(const unsigned char * buf, const unsigned int len) {
-
 	unsigned int i;
-
 	for (i = 0; i < len; i++)
 		if (buf[i] == 0x47)
 			return i;
-
 	return -1;
-}
-
-
-static int setPesFilter(const unsigned short pid)
-{
-	int fd;
-	struct demux_pes_para flt;
-
-	if ((fd = open(DMXDEV, O_RDWR|O_NONBLOCK)) < 0)
-	{
-		perror("[stream2file] setPesFilter open " DMXDEV);
-		return -1;
-	}
-
-	flt.pid = pid;
-	flt.pesType = DMX_PES_OTHER;
-	flt.output = OUT_NOTHING;
-	flt.flags = 0;
-	flt.unloader.unloader_type = UNLOADER_TYPE_BUCKET;
-	flt.unloader.threshold     = 128; // one interrupt every 32kB? enough?
-
-	ioctl(fd, DEMUX_SELECT_SOURCE, INPUT_FROM_CHANNEL0);
-	if (ioctl(fd, DEMUX_SET_BUFFER_SIZE, 65535) < 0)
-		perror("setPesFilter DEMUX_SET_BUFFER_SIZE");
-	if (ioctl(fd, DEMUX_FILTER_PES_SET, &flt) < 0)
-	{
-		perror("setPesFilter DEMUX_FILTER_PES_SET");
-		close(fd);
-		return -1;
-	}
-	if (ioctl(fd, DEMUX_START) < 0)
-	{
-		perror("setPesFilter DEMUX_START");
-		close(fd);
-		return -1;
-	}
-	fprintf(stderr, "%s:%d fd = %d,pid = 0x%04x\n",__FUNCTION__,__LINE__, fd, pid);
-
-	return fd;
-}
-
-static void unsetPesFilter(const int fd)
-{
-	ioctl(fd, DEMUX_STOP);
-	close(fd);
 }
 
 void cRecord::FileThread()
 {
 	ringbuffer_data_t vec[2];
 	size_t readsize;
+	ssize_t written;
 
-printf("%s:%s >\n", __FILE__, __FUNCTION__);
+printf("%s:%s >\n", FILENAME, __FUNCTION__);
 	ringbuffer_t * ringbuf = ringbuffer;
-	while (1)
+	while (exit_flag == STREAM2FILE_STATUS_RUNNING)
 	{
 		ringbuffer_get_read_vector(ringbuf, &(vec[0]));
 		readsize = vec[0].len + vec[1].len;
-		if (readsize)
+		if (!readsize)
 		{
-			ssize_t written;
+			usleep(1000);
+			continue;
+		}
 
-			while (1)
+		while (1)
+		{
+			written = write(file_fd, vec[0].buf, vec[0].len);
+			if (written < 0)
 			{
-				if ((written = write(file_fd, vec[0].buf, vec[0].len)) < 0)
+				if (errno == EAGAIN)
 				{
-					if (errno != EAGAIN)
-					{
-						exit_flag = STREAM2FILE_STATUS_WRITE_FAILURE;
-						perror("[stream2file]: error in write");
-						goto terminate_thread;
-					}
+					usleep(1000);
+					continue;
 				}
-				else
-				{
-					ringbuffer_read_advance(ringbuf, written);
-					
-					if (vec[0].len == (size_t)written)
-					{
-						if (vec[1].len == 0)
-						{
-							goto all_bytes_written;
-						}
-						
-						vec[0] = vec[1];
-						vec[1].len = 0;
-					}
-					else
-					{
-						vec[0].len -= written;
-						vec[0].buf += written;
-					}
-				}
+				exit_flag = STREAM2FILE_STATUS_WRITE_FAILURE;
+				perror("[stream2file]: error in write");
+				break; /* will break out of both loops due to exit_flag */
 			}
 
-all_bytes_written:
-;
-//fixme: do we need this			if (use_fdatasync)
-//				fdatasync(fd2);
-			
+			ringbuffer_read_advance(ringbuf, written);
+			if (vec[0].len == (size_t)written)
+			{
+				if (vec[1].len == 0)
+					break;
+				vec[0] = vec[1];
+				vec[1].len = 0;
+			}
+			else
+			{
+				vec[0].len -= written;
+				vec[0].buf += written;
+			}
 		}
-		else
-		{
-			if (exit_flag != STREAM2FILE_STATUS_RUNNING)
-				goto terminate_thread;
-			usleep(1000);
-		}
+		if (fdatasync(file_fd))
+			perror("cRecord::FileThreadfdatasync");
 	}
- terminate_thread:
-
-printf("%s:%s <\n", __FILE__, __FUNCTION__);
+printf("%s:%s <\n", FILENAME, __FUNCTION__);
 	pthread_exit(NULL);
 }
 
@@ -165,9 +107,9 @@ printf("%s:%s <\n", __FILE__, __FUNCTION__);
 void* execute_file_thread(void *c)
 {
 	cRecord *obj=(cRecord*)c;
-printf("%s:%s >\n", __FILE__, __FUNCTION__);
+printf("%s:%s >\n", FILENAME, __FUNCTION__);
 	obj->FileThread();
-printf("%s:%s <\n", __FILE__, __FUNCTION__);
+printf("%s:%s <\n", FILENAME, __FUNCTION__);
 	return NULL;
 }
 
@@ -175,22 +117,17 @@ void cRecord::DMXThread()
 {
 	pthread_t file_thread;
 	ringbuffer_data_t vec[2];
-	ssize_t written;
 	ssize_t todo = 0;
 	ssize_t todo2;
+	ssize_t r = 0;
+#if 0
+	ssize_t written;
 	unsigned char buf[TS_SIZE];
 	int offset = 0;
-	ssize_t r = 0;
-	struct pollfd pfd;
-	int pres;
+#endif
+printf("%s:%s >\n", FILENAME, __FUNCTION__);
 
-printf("%s:%s >\n", __FILE__, __FUNCTION__);
-
-	pfd.fd = dvrfd;
-	pfd.events = POLLIN|POLLERR;
-	pfd.revents = 0;
-
-	ringbuffer_t * ringbuf = ringbuffer_create(ringbuffersize);
+	ringbuffer_t * ringbuf = ringbuffer_create(1 << 20); /* 1MB */
 
 	if (!ringbuf)
 	{
@@ -208,33 +145,22 @@ printf("%s:%s >\n", __FILE__, __FUNCTION__);
 		printf("[stream2file]: error creating file_thread! (out of memory?)\n"); 
 	}
 
+	dmx->Start();
+#if 0
 	while (exit_flag == STREAM2FILE_STATUS_RUNNING)
 	{
-		if ((pres=poll (&pfd, 1, 15000))>0)
+		r = dmx->Read(&(buf[0]), TS_SIZE);
+		if (r < 0)
 		{
-			if (!(pfd.revents&POLLIN))
-			{
-				printf ("[stream2file]: PANIC: error reading from demux, bailing out\n");
-				exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
-			}
-			r = read(dvrfd, &(buf[0]), TS_SIZE);
-			/* only on Tripledragon */
-			if (r < 0)
-			{
-				perror("stream2file read DMX");
-				exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
-				break;
-			}
-			if (r > 0)
-			{
-				offset = sync_byte_offset(&(buf[0]), r);
-				if (offset != -1)
-					break;
-			}
+			perror("stream2file read DMX");
+			exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
+			break;
 		}
-		else if (!pres)
+		if (r > 0)
 		{
-			printf ("[stream2file]: timeout from demux\n");
+			offset = sync_byte_offset(&(buf[0]), r);
+			if (offset != -1)
+				break;
 		}
 	}
 
@@ -250,79 +176,63 @@ printf("%s:%s >\n", __FILE__, __FUNCTION__);
 	}
 
 	/* IN_SIZE > TS_SIZE => todo > 0 */
-
+#endif
+	todo = IN_SIZE;
 	while (exit_flag == STREAM2FILE_STATUS_RUNNING)
 	{
 		ringbuffer_get_write_vector(ringbuf, &(vec[0]));
+		//fprintf(stderr, "ringbuffer space: %u\n", vec[0].len + vec[1].len);
 		todo2 = todo - vec[0].len;
 		if (todo2 < 0)
-		{
 			todo2 = 0;
-		}
 		else
 		{
 			if (((size_t)todo2) > vec[1].len)
 			{
-				printf("PANIC: not enough space in ringbuffer, available %d, needed %d\n", vec[0].len + vec[1].len, todo + todo2);
+				printf("cRecord::DMXThread: ringbuffer full. available %d, needed %d\n", vec[0].len + vec[1].len, todo + todo2);
 				exit_flag = STREAM2FILE_STATUS_BUFFER_OVERFLOW;
+				break;
 			}
 			todo = vec[0].len;
 		}
 
 		while (exit_flag == STREAM2FILE_STATUS_RUNNING)
 		{
-			if ((pres=poll (&pfd, 1, 5000))>0)
+			r = dmx->Read((unsigned char *)vec[0].buf, todo, 100);
+			if (r > 0)
 			{
-				if (!(pfd.revents&POLLIN))
+				ringbuffer_write_advance(ringbuf, r);
+				if (todo == r)
 				{
-					printf ("PANIC: error reading from demux, bailing out\n");
-					exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
+					if (todo2 == 0)
+						break;
+					todo = todo2;
+					todo2 = 0;
+					vec[0].buf = vec[1].buf;
 				}
-				r = read(dvrfd, vec[0].buf, todo);
-				if (r > 0)
+				else
 				{
-					ringbuffer_write_advance(ringbuf, r);
-	
-					if (todo == r)
-					{
-						if (todo2 == 0)
-							goto next;
-	
-						todo = todo2;
-						todo2 = 0;
-						vec[0].buf = vec[1].buf;
-					}
-					else
-					{
-						vec[0].buf += r;
-						todo -= r;
-					}
-				}
-				if (r < 0 && errno != EAGAIN)
-				{
-					perror("[stream2file] read DMX");
-					exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
-					break;
+					vec[0].buf += r;
+					todo -= r;
 				}
 			}
-			else if (!pres){
-				printf ("[stream2file]: timeout reading from demux\n");
+			if (r < 0 && errno != EAGAIN)
+			{
+				perror("cRecord::DMXThread read failed");
 				exit_flag = STREAM2FILE_STATUS_READ_FAILURE;
+				break;
 			}
 		}
-		next:
-			todo = IN_SIZE;
+		todo = IN_SIZE;
 	}
 
-	close(dvrfd);
+	delete dmx;
+	dmx = NULL;
 
 	pthread_join(file_thread, NULL);
 
 	if (ringbuf)
 		ringbuffer_free(ringbuf);
-
-	while (demuxfd_count > 0)
-		unsetPesFilter(demuxfd[--demuxfd_count]);
 
 #ifdef needed
 //fixme: do we need it?
@@ -338,7 +248,7 @@ printf("%s:%s >\n", __FILE__, __FUNCTION__);
 	printf("[stream2file]: pthreads exit code: %i, dir: '%s', filename: '%s' myfilename: '%s'\n", exit_flag, s.dir, s.filename, myfilename);
 #endif
 
-printf("%s:%s <\n", __FILE__, __FUNCTION__);
+printf("%s:%s <\n", FILENAME, __FUNCTION__);
 	pthread_exit(NULL);
 }
 
@@ -357,11 +267,6 @@ cRecord::~cRecord()
 bool cRecord::Open(int numpids)
 {
 	printf("%s:%s numpids %d\n", FILENAME, __FUNCTION__, numpids);
-
-	ringbuffers = 4;
-	ringbuffersize = ((1 << 19) << ringbuffers);
-
-	demuxfd_count = numpids;
 
 	exit_flag = STREAM2FILE_STATUS_IDLE;
 
@@ -387,62 +292,21 @@ bool cRecord::Start(int fd, unsigned short vpid, unsigned short * apids, int num
 {
 	printf("%s:%s: fd %d, vpid 0x%02x\n", FILENAME, __FUNCTION__, fd, vpid);
 
-	printf("apids: ");
+	if (!dmx)
+		dmx = new cDemux(2); /* streamts and streaminfo use demux 1 */
+
+	dmx->Open(DMX_TP_CHANNEL, NULL, 0);
+	dmx->pesFilter(vpid);
+
 	for (int i = 0; i < numpids; i++)
-		printf("0x%02x ", apids[i]);
-	printf("\n");
+		dmx->addPid(apids[i]);
 
 	file_fd = fd;
-
-	demuxfd_count = 1 + numpids;
-
-//fixme: currently we only deal which what is called write_ts in earlier versions
-//not splitting is possible, because we dont have the filename here...
-
-	for (unsigned int i = 0; i < demuxfd_count; i++)
-	{
-		unsigned short pid;
-
-		if (i == 0)
-			pid = vpid;
-		else
-			pid = apids[i-1];
-
-		if ((demuxfd[i] = setPesFilter(pid)) < 0)
-		{
-			for (unsigned int j = 0; j < i; j++)
-				unsetPesFilter(demuxfd[j]);
-
-			printf("error setting pes filter\n");
-			return false;
-		}
-	}
-
-	if ((dvrfd = open(DMXDEV, O_RDWR|O_NONBLOCK)) != -1)
-	{
-		ioctl(dvrfd, DEMUX_SELECT_SOURCE, INPUT_FROM_CHANNEL0);
-		ioctl(dvrfd, DEMUX_SET_BUFFER_SIZE, 230400);
-		struct demux_bucket_para dbp;
-		dbp.unloader.unloader_type = UNLOADER_TYPE_TRANSPORT;
-		dbp.unloader.threshold     = 128; // one interrupt per 32kB
-		if (ioctl(dvrfd, DEMUX_FILTER_BUCKET_SET, &dbp) < 0)
-			perror("cRecord::Start() DEMUX_FILTER_BUCKET_SET");
-	}
-	else
-	{
-		while (demuxfd_count > 0)
-			unsetPesFilter(demuxfd[--demuxfd_count]);
-
-		printf("error opening dvr device\n");
-		return false;
-	}
-
-	printf("dvrfd %d\n", dvrfd);
 	exit_flag = STREAM2FILE_STATUS_RUNNING;
 
 	if (pthread_create(&demux_thread[0], 0, execute_demux_thread, this) != 0)
 	{
-		exit_flag = STREAM2FILE_STATUS_WRITE_OPEN_FAILURE; 
+		exit_flag = STREAM2FILE_STATUS_WRITE_OPEN_FAILURE;
 		printf("[stream2file]: error creating thread! (out of memory?)\n");
 		return false; 
 	}
@@ -462,13 +326,23 @@ bool cRecord::Stop(void)
 		printf("record time: %lu \n",record_end_time-record_start_time);
 
 		exit_flag = STREAM2FILE_STATUS_IDLE;
+		if (file_fd != -1)
+			close(file_fd);
+		else
+			fprintf(stderr, "%s:%s file_fd not open??\n", FILENAME, __FUNCTION__);
+		file_fd = -1;
 		return true;
 	}
 
+	if (file_fd != -1)
+		close(file_fd);
+	else
+		fprintf(stderr, "%s:%s file_fd not open??\n", FILENAME, __FUNCTION__);
+	file_fd = -1;
 	return false;
 }
 
-void cRecord::RecordNotify(int Event, void *pData)
+void cRecord::RecordNotify(int Event, void * /*pData*/)
 {
 	printf("%s:%s event %d\n", FILENAME, __FUNCTION__, Event); 
 //fixme: dont know what this is for? maybe we must connect to the event queues? not sure...
