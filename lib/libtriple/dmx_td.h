@@ -1,7 +1,8 @@
 #ifndef __DEMUX_TD_H
 #define __DEMUX_TD_H
 
-#include <stdlib.h>
+#include <cstdlib>
+#include <vector>
 extern "C" {
 #include <sys/ioctl.h>
 #include <hardware/xp/xp_osd_user.h>
@@ -28,6 +29,7 @@ class cDemux
 		int num;
 		int fd;
 		DMX_CHANNEL_TYPE dmx_type;
+		std::vector<int> pesfds;
 	public:
 
 		bool Open(DMX_CHANNEL_TYPE pes_type, void * x = NULL, int y = 0);
