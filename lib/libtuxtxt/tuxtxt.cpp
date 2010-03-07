@@ -21,7 +21,7 @@
 void FillRect(int x, int y, int w, int h, int color)
 {
 	unsigned char *p = lfb + x*4 + y * fix_screeninfo.line_length;
-#if 1
+#if !HAVE_TRIPLEDRAGON
 	unsigned int col = bgra[color][3] << 24 | bgra[color][2] << 16 | bgra[color][1] << 8 | bgra[color][0];
 	if (w > 0)
 		for (int count = 0; count < h; count++) {
@@ -274,7 +274,17 @@ void setfontwidth(int newwidth)
 	}
 }
 
-
+#if HAVE_TRIPLEDRAGON
+#define _A 0
+#define _R 1
+#define _G 2
+#define _B 3
+#else
+#define _A 3
+#define _R 2
+#define _G 1
+#define _B 0
+#endif
 void setcolors(unsigned short *pcolormap, int offset, int number)
 {
 	int i,trans_tmp;
@@ -282,7 +292,7 @@ void setcolors(unsigned short *pcolormap, int offset, int number)
 
 	trans_tmp=25-trans_mode;
 
-	bgra[transp2][3]=((trans_tmp+7)<<11 | 0x7FF)>>8;
+	bgra[transp2][_A]=((trans_tmp+7)<<11 | 0x7FF)>>8;
 
 	for (i = 0; i < number; i++)
 	{
@@ -294,9 +304,9 @@ void setcolors(unsigned short *pcolormap, int offset, int number)
 		g = (g * (0x3f+(color_mode<<3))) >> 8;
 		b = (b * (0x3f+(color_mode<<3))) >> 8;
 
-		bgra[j][2]=r;
-		bgra[j][1]=g;
-		bgra[j][0]=b;
+		bgra[j][_R]=r;
+		bgra[j][_G]=g;
+		bgra[j][_B]=b;
 
 		j++;
 	}
