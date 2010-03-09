@@ -11,6 +11,7 @@ noinst_LIBRARIES = libtriple.a
 AM_CPPFLAGS = -fno-rtti -fno-exceptions
 
 libtriple_a_SOURCES = \
+	ringbuffer.c \
 	dmx_td.cpp \
 	video_td.cpp \
 	audio_td.cpp \
