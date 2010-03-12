@@ -43,6 +43,8 @@ class cAudio
 
 		void openDevice(void);
 		void closeDevice(void);
+
+		int do_mute(bool enable);
 	public:
 		/* construct & destruct */
 		cAudio(void *, void *, void *);
@@ -50,8 +52,8 @@ class cAudio
 
 		void *GetHandle() { return NULL; };
 		/* shut up */
-		int mute(void);
-		int unmute(void);
+		int mute(void) { return do_mute(true); };
+		int unmute(void) { return do_mute(false); };
 
 		/* volume, min = 0, max = 255 */
 		int setVolume(unsigned int left, unsigned int right);

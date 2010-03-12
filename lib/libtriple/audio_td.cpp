@@ -15,6 +15,7 @@ cAudio::cAudio(void *, void *, void *)
 {
 	fd = -1;
 	openDevice();
+	Muted = false;
 }
 
 cAudio::~cAudio(void)
@@ -40,21 +41,13 @@ void cAudio::closeDevice(void)
 	fd = -1;
 }
 
-int cAudio::mute(void)
+int cAudio::do_mute(bool enable)
 {
 	int ret;
-	ret = ioctl(fd, MPEG_AUD_SET_MUTE, 1);
+	Muted = enable;
+	ret = ioctl(fd, MPEG_AUD_SET_MUTE, Muted);
 	if (ret < 0)
-		fprintf(stderr, "cAudio::mute failed (%m)\n");
-	return ret;
-}
-
-int cAudio::unmute(void)
-{
-	int ret;
-	ret = ioctl(fd, MPEG_AUD_SET_MUTE, 0);
-	if (ret < 0)
-		fprintf(stderr, "cAudio::unmute failed (%m)\n");
+		fprintf(stderr, "cAudio::%s(%d) failed (%m)\n", __FUNCTION__, (int)enable);
 	return ret;
 }
 
@@ -109,7 +102,12 @@ int cAudio::setVolume(unsigned int left, unsigned int right)
 
 int cAudio::Start(void)
 {
-	return ioctl(fd, MPEG_AUD_PLAY);
+	int ret;
+	ret = ioctl(fd, MPEG_AUD_PLAY);
+	/* this seems to be not strictly necessary since neutrino
+	   re-mutes all the time, but is certainly more correct */
+	ioctl(fd, MPEG_AUD_SET_MUTE, Muted);
+	return ret;
 }
 
 int cAudio::Stop(void)
