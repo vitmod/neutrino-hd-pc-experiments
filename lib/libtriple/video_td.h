@@ -143,8 +143,8 @@ class cVideo
 		int getBlank(void);
 		int setBlank(int enable);
 
-		/* change video play state */
-		int Start(void * PcrChannel, unsigned short PcrPid, unsigned short VideoPid, void * hChannel = NULL);
+		/* change video play state. Parameters are all unused. */
+		int Start(void *PcrChannel = NULL, unsigned short PcrPid = 0, unsigned short VideoPid = 0, void *x = NULL);
 		int Stop(bool blank = true);
 		bool Pause(void);
 
