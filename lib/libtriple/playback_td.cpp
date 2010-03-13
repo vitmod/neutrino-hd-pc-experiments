@@ -198,6 +198,7 @@ void cPlayback::playthread(void)
 	audioDemux->Start();
 	videoDemux->Start();
 
+	videoDecoder->setBlank(1);
 	videoDecoder->Start();
 	audioDecoder->Start();
 
@@ -206,6 +207,11 @@ void cPlayback::playthread(void)
 		if (inbuf_read() < 0)
 			break;
 
+		if (playback_speed == 0)
+		{
+			usleep(1);
+			continue;
+		}
 		towrite = inbuf_pos / 188 * 188; /* TODO: smaller chunks? */
 		if (towrite == 0)
 			continue;
@@ -239,7 +245,7 @@ bool cPlayback::SetAPid(unsigned short pid, bool _ac3)
 	audioDemux->Stop();
 	audioDecoder->Stop();
 	videoDemux->Stop();
-	videoDecoder->Stop();
+	videoDecoder->Stop(false);
 
 	if (ac3)
 		audioDecoder->SetStreamType(AUDIO_FMT_DOLBY_DIGITAL);
@@ -257,7 +263,21 @@ bool cPlayback::SetAPid(unsigned short pid, bool _ac3)
 bool cPlayback::SetSpeed(int speed)
 {
 	INFO("speed = %d\n", speed);
+	if (speed != 0 && playback_speed == 0)
+	{
+		videoDemux->Stop();
+		videoDemux->Start();
+		audioDemux->Start();
+		audioDecoder->Start();
+		videoDecoder->Start();
+	}
 	playback_speed = speed;
+	if (playback_speed == 0)
+	{
+		audioDecoder->Stop();
+		audioDemux->Stop();
+		videoDecoder->Stop(false);
+	}
 	return true;
 }
 
