@@ -46,6 +46,7 @@ class cDemux
 		const DMX_CHANNEL_TYPE getChannelType(void) { return dmx_type; };
 		void addPid(unsigned short pid);
 		void getSTC(int64_t * STC);
+		int getFD(void) { return fd; };	/* needed by cPlayback class */
 		//
 		cDemux(int num = 0);
 		~cDemux();
