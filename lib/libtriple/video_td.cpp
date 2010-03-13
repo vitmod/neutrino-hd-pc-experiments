@@ -196,23 +196,26 @@ video_stream_source_t cVideo::getSource(void)
 
 int cVideo::Start(void * /*PcrChannel*/, unsigned short /*PcrPid*/, unsigned short /*VideoPid*/, void * /*hChannel*/)
 {
-#ifdef HAVE_TRIPLEDRAGON
 	if (playstate == VIDEO_PLAYING)
 		return 0;
+//	if (playstate == VIDEO_STOPPED)  /* in theory better, but not in practice :-) */
+//		fop(ioctl, MPEG_VID_CONTINUE);
 	playstate = VIDEO_PLAYING;
 	fop(ioctl, MPEG_VID_PLAY);
 	return fop(ioctl, MPEG_VID_SYNC_ON, VID_SYNC_AUD);
-#else
-	return fop(ioctl, VIDEO_PLAY);
-#endif
 }
 
-int cVideo::Stop(bool /*blank*/)
+int cVideo::Stop(bool blank)
 {
-#ifdef HAVE_TRIPLEDRAGON
-	playstate = VIDEO_STOPPED;
-#endif
-	return fop(ioctl, MPEG_VID_STOP);
+	//fprintf(stderr, "cVideo::Stop %d\n", blank);
+	if (blank)
+	{
+		playstate = VIDEO_STOPPED;
+		fop(ioctl, MPEG_VID_STOP);
+		return setBlank(1);
+	}
+	playstate = VIDEO_FREEZED;
+	return fop(ioctl, MPEG_VID_FREEZE);
 }
 
 int cVideo::setBlank(int)
