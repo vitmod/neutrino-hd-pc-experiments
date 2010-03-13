@@ -315,7 +315,7 @@ fprintf(stderr, "cDemux::%s #%d pid: 0x%04hx fd: %d type: %s\n", __FUNCTION__, n
 
 	if (dmx_type == DMX_TP_CHANNEL)
 	{
-		int n = pesfds.size();
+		unsigned int n = pesfds.size();
 		addPid(pid);
 		return (n != pesfds.size());
 	}
