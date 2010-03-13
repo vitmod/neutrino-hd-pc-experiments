@@ -125,6 +125,19 @@ void cAudio::SetSyncMode(AVSYNC_TYPE /*Mode*/)
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
 };
 
+void cAudio::SetStreamType(AUDIO_FORMAT type)
+{
+	int bypass_disable;
+	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
+	StreamType = type;
+
+	if (StreamType != AUDIO_FMT_DOLBY_DIGITAL && StreamType != AUDIO_FMT_MPEG)
+		fprintf(stderr, "cAudio::%s unhandled AUDIO_FORMAT %d\n", __FUNCTION__, StreamType);
+
+	bypass_disable = (StreamType != AUDIO_FMT_DOLBY_DIGITAL);
+	setBypassMode(bypass_disable);
+};
+
 int cAudio::setChannel(int /*channel*/)
 {
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
@@ -210,22 +223,24 @@ void EnableAnalogOut(bool /*enable*/)
 	fprintf(stderr, "cAudio::%s\n", __FUNCTION__);
 };
 
-#if 0
-int CAudio::setBypassMode(int disable)
+void cAudio::setBypassMode(bool disable)
 {
-	/* disable = 1 actually means: audio is MPEG, disable = 0 is audio is AC3 */
+	/* disable = true: audio is MPEG, disable = false: audio is AC3 */
 	if (disable)
-		return quiet_fop(ioctl, MPEG_AUD_SET_MODE, AUD_MODE_MPEG);
-
+	{
+		ioctl(fd, MPEG_AUD_SET_MODE, AUD_MODE_MPEG);
+		return;
+	}
 	/* dvb2001 does always set AUD_MODE_DTS before setting AUD_MODE_AC3,
 	   this might be some workaround, so we do the same... */
-	quiet_fop(ioctl, MPEG_AUD_SET_MODE, AUD_MODE_DTS);
-	return quiet_fop(ioctl, MPEG_AUD_SET_MODE, AUD_MODE_AC3);
-
+	ioctl(fd, MPEG_AUD_SET_MODE, AUD_MODE_DTS);
+	ioctl(fd, MPEG_AUD_SET_MODE, AUD_MODE_AC3);
+	return;
 	/* all those ioctl aways return "invalid argument", but they seem to
-	   work nevertheless, that's why I use quiet_fop here */
+	   work anyway, so there's no use in checking the return value */
 }
 
+#if 0
 int CAudio::enableBypass(void)
 {
 	return setBypassMode(0);

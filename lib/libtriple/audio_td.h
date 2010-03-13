@@ -45,6 +45,7 @@ class cAudio
 		void closeDevice(void);
 
 		int do_mute(bool enable);
+		void setBypassMode(bool disable);
 	public:
 		/* construct & destruct */
 		cAudio(void *, void *, void *);
@@ -63,7 +64,7 @@ class cAudio
 		int Start(void);
 		int Stop(void);
 		bool Pause(bool Pcm = true);
-		void SetStreamType(AUDIO_FORMAT type) { StreamType = type; };
+		void SetStreamType(AUDIO_FORMAT type);
 #define AVSYNC_TYPE int
 		void SetSyncMode(AVSYNC_TYPE Mode);
 
