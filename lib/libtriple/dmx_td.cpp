@@ -175,7 +175,8 @@ int cDemux::Read(unsigned char *buff, int len, int timeout)
 		}
 		if (!(ufds.revents & POLLIN)) /* we requested POLLIN but did not get it? */
 		{
-			fprintf(stderr, "cDemux::%s: not ufds.revents&POLLIN, please report!\n", __FUNCTION__);
+			fprintf(stderr, "cDemux::%s: not ufds.revents&POLLIN, please report! "
+					"revents: 0x%x fd: %d rc: %d '%m'\n", __FUNCTION__, ufds.revents, fd, rc);
 			return 0;
 		}
 	}
