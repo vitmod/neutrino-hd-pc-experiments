@@ -212,6 +212,21 @@ void cPlayback::playthread(void)
 			usleep(1);
 			continue;
 		}
+		/* autoselect PID for PLAYMODE_FILE */
+		if (apid == 0 && numpida > 0)
+		{
+			for (int i = 0; i < numpida; i++)
+			{
+				if (ac3flags[i] == 0)
+				{
+					apid = apids[i];
+					INFO("setting Audio pid to 0x%04hx\n", apid);
+					SetAPid(apid, 0);
+					break;
+				}
+			}
+		}
+
 		towrite = inbuf_pos / 188 * 188; /* TODO: smaller chunks? */
 		if (towrite == 0)
 			continue;
@@ -314,10 +329,10 @@ bool cPlayback::SetPosition(int position, bool absolute)
 void cPlayback::FindAllPids(uint16_t *_apids, unsigned short *_ac3flags, uint16_t *_numpida, std::string *language)
 {
 	INFO("\n");
-	_apids = apids;
-	_ac3flags = ac3flags;
+	memcpy(_apids, &apids, sizeof(apids));
+	memcpy(_ac3flags, &ac3flags, sizeof(&ac3flags));
+	language = alang; /* TODO: language */
 	*_numpida = numpida;
-	language = alang;
 }
 
 bool cPlayback::filelist_auto_add()
@@ -567,10 +582,12 @@ ssize_t cPlayback::read_ts()
 			for (j = 0; j < numpida; j++) {
 				if (apids[j] == pid)
 				{
-					i += 188;
-					continue;
+					pid_new = false;
+					break;
 				}
 			}
+			if (!pid_new)
+				break;
 			if (buf[7 + off] == 0xbd)
 			{
 				if (buf[12 + off] == 0x24)	/* 0x24 == TTX */
@@ -580,6 +597,7 @@ ssize_t cPlayback::read_ts()
 			else
 				ac3flags[numpida] = 0;
 			apids[numpida] = pid;
+			INFO("found apid #%d 0x%04hx ac3:%d\n", numpida, pid, ac3flags[numpida]);
 			numpida++;
 			break;
 		}
