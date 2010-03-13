@@ -47,7 +47,7 @@ cVideo::cVideo(int, void *, void *)
 {
 	if ((fd = open(VIDEO_DEVICE, O_RDWR)) < 0)
 		ERROR(VIDEO_DEVICE);
-#ifdef HAVE_TRIPLEDRAGON
+
 	playstate = VIDEO_STOPPED;
 	croppingMode = VID_DISPMODE_NORM;
 	z[0] = 100;
@@ -82,14 +82,6 @@ cVideo::cVideo(int, void *, void *)
 		}
 		close(blankfd);
 	}
-#endif
-
-#ifdef HAVE_DBOX_HARDWARE
-	/* setBlank is not _needed_ on the Dreambox. I don't know about the
-	   dbox, so i ifdef'd it out. Not blanking the fb leaves the bootlogo
-	   on screen until the video starts. --seife */
-	setBlank(true);
-#endif
 }
 
 cVideo::~cVideo(void)
@@ -223,12 +215,6 @@ int cVideo::Stop(bool /*blank*/)
 	return fop(ioctl, MPEG_VID_STOP);
 }
 
-#ifndef HAVE_TRIPLEDRAGON
-int cVideo::setBlank(int enable)
-{
-	return fop(ioctl, VIDEO_SET_BLANK, enable);
-}
-#else
 int cVideo::setBlank(int)
 {
 	/* The TripleDragon has no VIDEO_SET_BLANK ioctl.
@@ -266,9 +252,9 @@ int cVideo::setBlank(int)
 
 	buf.ulLen = blank_size[index];
 	buf.ulStartAdrOff = (int)blank_data[index];
-	return fop(ioctl, MPEG_VID_STILLP_WRITE, &buf);
+	fop(ioctl, MPEG_VID_STILLP_WRITE, &buf);
+	return fop(ioctl, MPEG_VID_SELECT_SOURCE, VID_SOURCE_DEMUX);
 }
-#endif
 
 int cVideo::SetVideoSystem(int video_system, bool remember)
 {
