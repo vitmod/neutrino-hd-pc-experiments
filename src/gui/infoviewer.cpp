@@ -251,6 +251,7 @@ void CInfoViewer::start ()
 
 void CInfoViewer::changePB()
 {
+		hddwidth = frameBuffer->getScreenWidth(true) * 10 / 128; /* 100 pix if screen is 1280 wide */
 		if (sigscale != NULL)
 			delete sigscale;
 		sigscale = new CProgressBar(true, BAR_WIDTH, 10, RED_BAR, GREEN_BAR, YELLOW_BAR);
@@ -259,10 +260,10 @@ void CInfoViewer::changePB()
 		snrscale = new CProgressBar(true, BAR_WIDTH, 10, RED_BAR, GREEN_BAR, YELLOW_BAR);
 		if (hddscale != NULL)
 			delete hddscale;
-		hddscale = new CProgressBar(true, 100,        6, 50,      GREEN_BAR, 75, true);
+		hddscale = new CProgressBar(true, hddwidth,   6, 50,      GREEN_BAR, 75, true);
 		if (varscale != NULL)
 			delete varscale;
-		varscale = new CProgressBar(true, 100,        6, 50,      GREEN_BAR, 75, true);
+		varscale = new CProgressBar(true, hddwidth,   6, 50,      GREEN_BAR, 75, true);
 		if (timescale != NULL)
 			delete timescale;
 		timescale = new CProgressBar(true, -1,       -1, 30,      GREEN_BAR, 70, true);
@@ -1162,8 +1163,8 @@ void CInfoViewer::showSNR ()
 	/* center the scales in the button bar. BBarY + InfoHeightY_Info / 2 is middle,
 	   scales are 6 pixels high, icons are 16 pixels, so keep 4 pixels free between
 	   the scales */
-	varscale->paintProgressBar(BoxEndX - (2*ICON_LARGE_WIDTH + 2*ICON_SMALL_WIDTH + 4*2) - 102,
-				   BBarY + InfoHeightY_Info / 2 - 2 - 6, 100, 6, per, 100);
+	varscale->paintProgressBar(BoxEndX - (2*ICON_LARGE_WIDTH + 2*ICON_SMALL_WIDTH + 4*2) - hddwidth - 2,
+				   BBarY + InfoHeightY_Info / 2 - 2 - 6, hddwidth, 6, per, 100);
 	per = 0;
 	//HD info
 	if (::statfs(g_settings.network_nfs_recordingdir, &s) == 0) {
@@ -1185,8 +1186,8 @@ void CInfoViewer::showSNR ()
 		}
 	}
 
-	hddscale->paintProgressBar(BoxEndX - (2*ICON_LARGE_WIDTH + 2*ICON_SMALL_WIDTH + 4*2) - 102,
-				   BBarY + InfoHeightY_Info / 2 + 2, 100, 6, per, 100);
+	hddscale->paintProgressBar(BoxEndX - (2*ICON_LARGE_WIDTH + 2*ICON_SMALL_WIDTH + 4*2) - hddwidth - 2,
+				   BBarY + InfoHeightY_Info / 2 + 2, hddwidth, 6, per, 100);
 }
 
 void CInfoViewer::display_Info(const char *current, const char *next,
