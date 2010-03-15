@@ -59,6 +59,7 @@ bool cPlayback::Open(playmode_t mode)
 	thread_started = false;
 	playMode = mode;
 	filetype = FILETYPE_TS;
+	playback_speed = 1;
 	numpida = 0;
 	memset(&apids, 0, sizeof(apids));
 	memset(&ac3flags, 0, sizeof(ac3flags));
@@ -165,7 +166,11 @@ bool cPlayback::Start(char *filename, unsigned short vp, int vtype, unsigned sho
 			break;
 	}
 	pts_curr = pts_start;
-
+	bytes_per_second = -1;
+	int duration = (pts_end - pts_start) / 90000;
+	if (duration > 0)
+		bytes_per_second = mf_getsize() / duration;
+	INFO("start: %lld end %lld duration %d bps %lld\n", pts_start, pts_end, duration, bytes_per_second);
 	playstate = STATE_PLAY;
 	if (pthread_create(&thread, 0, start_playthread, this) != 0)
 		INFO("pthread_create failed\n");
@@ -208,16 +213,17 @@ void cPlayback::playthread(void)
 	videoDecoder->Start();
 	audioDecoder->Start();
 
-	while(playstate != STATE_STOP)
+	while (playstate != STATE_STOP)
 	{
-		if (inbuf_read() < 0)
-			break;
-
 		if (playback_speed == 0)
 		{
+			playstate = STATE_PAUSE;
 			usleep(1);
 			continue;
 		}
+		if (inbuf_read() < 0)
+			break;
+
 		/* autoselect PID for PLAYMODE_FILE */
 		if (apid == 0 && numpida > 0)
 		{
@@ -299,6 +305,7 @@ bool cPlayback::SetSpeed(int speed)
 		audioDemux->Start();
 		audioDecoder->Start();
 		videoDecoder->Start();
+		playstate = STATE_PLAY;
 	}
 	playback_speed = speed;
 	if (playback_speed == 0)
@@ -331,13 +338,44 @@ bool cPlayback::GetPosition(int &position, int &duration)
 		tmppts = pts_curr - pts_start;
 	position = tmppts / 90;
 	duration = (pts_end - pts_start) / 90;
-	return true;
+
+	return (pts_end != -1 && pts_curr != -1);
 }
 
 bool cPlayback::SetPosition(int position, bool absolute)
 {
 	INFO("pos = %d abs = %d\n", position, absolute);
-	return true;
+	int currpos, target, duration, oldspeed;
+	bool ret;
+
+	if (absolute)
+		target = position;
+	else
+	{
+		GetPosition(currpos, duration);
+		target = currpos + position;
+		INFO("current position %d target %d\n", currpos, target);
+	}
+
+	oldspeed = playback_speed;
+	if (oldspeed != 0)
+		SetSpeed(0);		/* request pause */
+
+	while (playstate == STATE_PLAY)	/* playthread did not acknowledge pause */
+		usleep(1);
+	if (playstate == STATE_STOP)	/* we did get stopped by someone else */
+		return false;
+
+	ret = (seek_to_pts(target * 90) > 0);
+
+	if (oldspeed != 0)
+	{
+		SetSpeed(oldspeed);
+		/* avoid ugly artifacts */
+		videoDecoder->Stop();
+		videoDecoder->Start();
+	}
+	return ret;
 }
 
 void cPlayback::FindAllPids(uint16_t *_apids, unsigned short *_ac3flags, uint16_t *_numpida, std::string *language)
@@ -347,6 +385,53 @@ void cPlayback::FindAllPids(uint16_t *_apids, unsigned short *_ac3flags, uint16_
 	memcpy(_ac3flags, &ac3flags, sizeof(&ac3flags));
 	language = alang; /* TODO: language */
 	*_numpida = numpida;
+}
+
+off_t cPlayback::seek_to_pts(int64_t pts)
+{
+	off_t newpos = curr_pos;
+	int64_t tmppts, ptsdiff;
+	int count = 0;
+	if (pts_start < 0 || pts_end < 0 || bytes_per_second < 0)
+	{
+		INFO("pts_start (%lld) or pts_end (%lld) or bytes_per_second (%lld) not initialized\n",
+			pts_start, pts_end, bytes_per_second);
+		return -1;
+	}
+	/* sanity check: buffer is without locking, so we must only seek while in pause mode */
+	if (playstate != STATE_PAUSE)
+	{
+		INFO("playstate (%d) != STATE_PAUSE, not seeking\n", playstate);
+		return -1;
+	}
+
+	/* tmppts is normalized current pts */
+	if (pts_curr < pts_start)
+		tmppts = pts_curr + 0x200000000ULL - pts_start;
+	else
+		tmppts = pts_curr - pts_start;
+	while (abs(pts - tmppts) > 90000LL && count < 10)
+	{
+		count++;
+		ptsdiff = pts - tmppts;
+		newpos += ptsdiff * bytes_per_second / 90000;
+		INFO("try #%d seeking from %lldms to %lldms, diff %lldms curr_pos %lld newpos %lld\n",
+			count, tmppts / 90, pts / 90, ptsdiff / 90, curr_pos, newpos);
+		if (newpos < 0)
+			newpos = 0;
+		newpos = mp_seekSync(newpos);
+		if (newpos < 0)
+			return newpos;
+		inbuf_pos = 0;
+		inbuf_sync = 0;
+		inbuf_read(); /* also updates current pts */
+		if (pts_curr < pts_start)
+			tmppts = pts_curr + 0x200000000ULL - pts_start;
+		else
+			tmppts = pts_curr - pts_start;
+	}
+	INFO("end after %d tries, ptsdiff now %lld sec\n", count, (pts - tmppts) / 90000);
+	return newpos;
 }
 
 bool cPlayback::filelist_auto_add()
@@ -452,7 +537,8 @@ off_t cPlayback::mf_lseek(off_t pos)
 	if (ret < 0)
 		return ret;
 
-	return offset + ret;
+	curr_pos = offset + ret;
+	return curr_pos;
 }
 
 /* gets the PTS at a specific file position from a PES

@@ -60,6 +60,7 @@ class cPlayback
 		off_t mf_getsize(void);
 		int curr_fileno;
 		off_t curr_pos;
+		off_t bytes_per_second;
 
 		uint16_t vpid;
 		uint16_t apid;
@@ -77,6 +78,7 @@ class cPlayback
 		filetype_t filetype;
 		playstate_t playstate;
 
+		off_t seek_to_pts(int64_t pts);
 		off_t mp_seekSync(off_t pos);
 		int64_t get_PES_PTS(uint8_t *buf, int len, bool until_eof);
 
