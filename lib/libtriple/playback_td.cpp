@@ -19,6 +19,9 @@
 static int mp_syncPES(uint8_t *, int);
 static inline uint16_t get_pid(uint8_t *buf);
 static void *start_playthread(void *c);
+static void playthread_cleanup_handler(void *);
+
+static int dvrfd = -1;
 
 extern cDemux *videoDemux;
 extern cDemux *audioDemux;
@@ -177,16 +180,17 @@ static void *start_playthread(void *c)
 void cPlayback::playthread(void)
 {
 	thread_started = true;
-	int dmxfd = audioDemux->getFD();
-	int dvrfd = open(DVR, O_WRONLY);
 	int ret, towrite;
+	dvrfd = open(DVR, O_WRONLY);
 	if (dvrfd < 0)
 	{
 		INFO("open tdpvr failed: %m\n");
 		pthread_exit(NULL);
 	}
 
-	ioctl(dmxfd, DEMUX_SELECT_SOURCE, INPUT_FROM_PVR);
+	pthread_cleanup_push(playthread_cleanup_handler, 0);
+
+	ioctl(audioDemux->getFD(), DEMUX_SELECT_SOURCE, INPUT_FROM_PVR);
 	if (ac3)
 		audioDecoder->SetStreamType(AUDIO_FMT_DOLBY_DIGITAL);
 	else
@@ -242,13 +246,21 @@ void cPlayback::playthread(void)
 		memmove(inbuf, inbuf + ret, inbuf_pos - ret);
 		inbuf_pos -= ret;
 	}
-	ioctl(dmxfd, DEMUX_SELECT_SOURCE, INPUT_FROM_CHANNEL0);
+
+	pthread_cleanup_pop(1);
+	pthread_exit(NULL);
+}
+
+static void playthread_cleanup_handler(void *)
+{
+	INFO("\n");
+	ioctl(audioDemux->getFD(), DEMUX_SELECT_SOURCE, INPUT_FROM_CHANNEL0);
 	audioDemux->Stop();
 	videoDemux->Stop();
 	audioDecoder->Stop();
 	videoDecoder->Stop();
 	close(dvrfd);
-	pthread_exit(NULL);
+	dvrfd = -1;
 }
 
 bool cPlayback::SetAPid(unsigned short pid, bool _ac3)
