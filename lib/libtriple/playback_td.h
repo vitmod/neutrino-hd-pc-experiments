@@ -77,7 +77,6 @@ class cPlayback
 		filetype_t filetype;
 		playstate_t playstate;
 
-		int sync_ts(int off);
 		off_t mp_seekSync(off_t pos);
 		int64_t get_PES_PTS(uint8_t *buf, int len, bool until_eof);
 

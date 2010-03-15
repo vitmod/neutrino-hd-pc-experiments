@@ -16,7 +16,9 @@
 #else
 #define DBG(args...)
 #endif
+
 static int mp_syncPES(uint8_t *, int);
+static int sync_ts(uint8_t *, int);
 static inline uint16_t get_pid(uint8_t *buf);
 static void *start_playthread(void *c);
 static void playthread_cleanup_handler(void *);
@@ -539,13 +541,13 @@ ssize_t cPlayback::read_ts()
 	inbuf_pos += ret;
 	curr_pos += ret;
 
-	sync = sync_ts(inbuf_sync);
+	sync = sync_ts(inbuf + inbuf_sync, INBUF_SIZE - inbuf_sync);
 	if (sync < 0)
 	{
 		INFO("cannot sync\n");
 		return ret;
 	}
-	inbuf_sync = sync;
+	inbuf_sync += sync;
 	/* check for A/V PIDs */
 	uint16_t pid;
 	int i, j;
@@ -553,8 +555,8 @@ ssize_t cPlayback::read_ts()
 	int64_t pts;
 	// fprintf(stderr, "inbuf_pos: %ld - sync: %ld\n", (long)inbuf_pos, (long)sync);
 	int synccnt = 0;
-	for (i = 0; i < inbuf_pos - sync - 13;) {
-		uint8_t *buf = inbuf + sync + i;
+	for (i = 0; i < inbuf_pos - inbuf_sync - 13;) {
+		uint8_t *buf = inbuf + inbuf_sync + i;
 		if (*buf != 0x47)
 		{
 			synccnt++;
@@ -867,21 +869,18 @@ off_t cPlayback::mp_seekSync(off_t pos)
 	return mf_lseek(pos);
 }
 
-int cPlayback::sync_ts(int off)
+static int sync_ts(uint8_t *p, int len)
 {
-	uint8_t *p;
 	int count;
-
-	if (inbuf_pos - 188 < off)
+	if (len < 189)
 		return -1;
 
 	count = 0;
-	p = inbuf + off;
 	while (*p != 0x47 || *(p + 188) != 0x47)
 	{
 		count++;
 		p++;
-		if (count + off > inbuf_pos - 188)
+		if (count + 188 > len)
 			return -1;
 	}
 	return count;
