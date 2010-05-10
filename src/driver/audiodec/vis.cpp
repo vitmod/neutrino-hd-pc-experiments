@@ -25,6 +25,9 @@
 #if HAVE_TRIPLEDRAGON
 #include <driver/lcdd.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <driver/dummy/vfd.h>
+#endif
 #include "int_fft.c"
 typedef signed short gint16;
 typedef int gint;

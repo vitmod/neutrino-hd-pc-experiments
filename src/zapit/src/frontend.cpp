@@ -37,9 +37,14 @@
 
 #if HAVE_COOL_HARDWARE
 #include "driver/vfd.h"
-#else
+#endif
+#if HAVE_TRIPLEDRAGON
 #include <libtriple/td-compat/td-value-compat.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <driver/dummy/vfd.h>
+#endif
+
 
 extern double gotoXXLatitude, gotoXXLongitude;
 extern int gotoXXLaDirection, gotoXXLoDirection;

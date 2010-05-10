@@ -48,6 +48,9 @@
 #include "driver/lcdd.h"
 #define CVFD CLCD
 #endif
+#if HAVE_PC_HARDWARE
+#include <driver/dummy/vfd.h>
+#endif
 
 #include "system/localize.h"
 #include "system/settings.h"

@@ -62,6 +62,9 @@
 #include <record_td.h>
 #include <driver/lcdd.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <driver/dummy/vfd.h>
+#endif
 #include <zapit/cam.h>
 #include <zapit/channel.h>
 
