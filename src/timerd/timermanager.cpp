@@ -33,7 +33,7 @@
 #include <timermanager.h>
 #include <timerdclient/timerdclient.h>
 #include <timerdclient/timerdmsg.h>
-#include <debug.h>
+#include "debug.h" // we want the local debug.h
 #include <sectionsdclient/sectionsdclient.h>
 
 #include <vector>
