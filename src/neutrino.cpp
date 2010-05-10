@@ -3037,7 +3037,7 @@ int CNeutrinoApp::handleMsg(const neutrino_msg_t msg, neutrino_msg_data_t data)
 			int old_num = 0;
 			int old_b = bouquetList->getActiveBouquetNumber();
 			int old_mode = g_settings.channel_mode;
-			printf("************************* ZAP START: bouquetList %x size %d old_b %d\n", (int) bouquetList, bouquetList->Bouquets.size(), old_b);fflush(stdout);
+			printf("************************* ZAP START: bouquetList %p size %d old_b %d\n", bouquetList, bouquetList->Bouquets.size(), old_b);fflush(stdout);
 
 			if(bouquetList->Bouquets.size()) {
 				old_num = bouquetList->Bouquets[old_b]->channelList->getActiveChannelNumber();
@@ -3068,7 +3068,7 @@ _repeat:
 					StartSubtitles();
 			}
 			else if(nNewChannel == -3) { // list mode changed
-				printf("************************* ZAP NEW MODE: bouquetList %x size %d\n", (int) bouquetList, bouquetList->Bouquets.size());fflush(stdout);
+				printf("************************* ZAP NEW MODE: bouquetList %p size %d\n", bouquetList, bouquetList->Bouquets.size());fflush(stdout);
 				nNewChannel = bouquetList->exec(true);
 				goto _repeat;
 			}
