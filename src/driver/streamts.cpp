@@ -273,7 +273,7 @@ void * streamts_live_thread(void *data)
 	int pids[MAXPIDS];
 	char cbuf[512];
 	char *bp;
-	int fd = (int) data;
+	int fd = (intptr_t) data;
 	FILE * fp;
 	unsigned char demuxfd_count = 0;
 
@@ -401,7 +401,7 @@ void streamts_file_thread(void *data)
 	int tsfilelen = 0;
 	int fileslice = 0;
 	int i = 0;
-	int fd = (int) data;
+	int fd = (intptr_t) data;
 
 	buf = (unsigned char *) malloc(IN_SIZE);
 

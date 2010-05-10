@@ -677,7 +677,7 @@ bool CMovieInfo::parseXmlQuickFix(char *text, MI_MOVIE_INFO * movie_info)
 			pos2 = -1;
 			ptr = strstr(&text[pos], MI_XML_TAG_PID);
 			if (ptr)
-				pos2 = (int)ptr - (int)&text[pos];
+				pos2 = (intptr_t)ptr - (intptr_t)&text[pos];
 			//pos2 = strcspn(&text[pos],MI_XML_TAG_PID);
 			if (pos2 >= 0) {
 				pos2 += sizeof(MI_XML_TAG_PID);
@@ -692,7 +692,7 @@ bool CMovieInfo::parseXmlQuickFix(char *text, MI_MOVIE_INFO * movie_info)
 			pos2 = -1;
 			ptr = strstr(&text[pos], MI_XML_TAG_ATYPE);
 			if (ptr)
-				pos2 = (int)ptr - (int)&text[pos];
+				pos2 = (intptr_t)ptr - (intptr_t)&text[pos];
 			//pos2 = strcspn(&text[pos],MI_XML_TAG_ATYPE);
 			if (pos2 >= 0) {
 				pos2 += sizeof(MI_XML_TAG_ATYPE);
@@ -706,7 +706,7 @@ bool CMovieInfo::parseXmlQuickFix(char *text, MI_MOVIE_INFO * movie_info)
 			pos2 = -1;
 			ptr = strstr(&text[pos], MI_XML_TAG_SELECTED);
 			if (ptr)
-				pos2 = (int)ptr - (int)&text[pos];
+				pos2 = (intptr_t)ptr - (intptr_t)&text[pos];
 			//pos2 = strcspn(&text[pos],MI_XML_TAG_SELECTED);
 			if (pos2 >= 0) {
 				pos2 += sizeof(MI_XML_TAG_SELECTED);
@@ -721,7 +721,7 @@ bool CMovieInfo::parseXmlQuickFix(char *text, MI_MOVIE_INFO * movie_info)
 			pos2 = -1;
 			ptr = strstr(&text[pos], MI_XML_TAG_NAME);
 			if (ptr)
-				pos2 = (int)ptr - (int)&text[pos];
+				pos2 = (intptr_t)ptr - (intptr_t)&text[pos];
 			if (pos2 >= 0) {
 				pos2 += sizeof(MI_XML_TAG_PID);
 				while (text[pos + pos2] != '\"' && text[pos + pos2] != 0 && text[pos + pos2] != '/')

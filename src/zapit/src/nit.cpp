@@ -34,7 +34,7 @@
 
 void *nit_thread(void * data)
 {
-	int satellitePosition = (int) data;
+	int satellitePosition = (intptr_t) data;
 
 	printf("[scan] trying to parse NIT\n");
 	int status = parse_nit(satellitePosition, 0);

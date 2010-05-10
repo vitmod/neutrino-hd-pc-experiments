@@ -2018,7 +2018,7 @@ void signal_handler(int signum)
 
 int zapit_main_thread(void *data)
 {
-	int			video_mode = (int) data;
+	int			video_mode = (intptr_t) data;
 
 	time_t stime;
 	printf("[zapit] starting... tid %ld\n", syscall(__NR_gettid));

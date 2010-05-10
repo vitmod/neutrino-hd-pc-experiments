@@ -78,8 +78,13 @@
 #define KEY_BOTTOMRIGHT  0x1a5
 #endif
 
+#if __WORDSIZE == 64
+typedef uint64_t neutrino_msg_t;
+typedef uint64_t neutrino_msg_data_t;
+#else
 typedef uint32_t neutrino_msg_t;
 typedef uint32_t neutrino_msg_data_t;
+#endif
 
 #define NEUTRINO_UDS_NAME "/tmp/neutrino.sock"
 

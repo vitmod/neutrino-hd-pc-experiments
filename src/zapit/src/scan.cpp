@@ -486,7 +486,7 @@ void *start_scanthread(void *scanmode)
  	found_data_chans = 0;
 	found_channels = 0;
 	bool satfeed = false;
-	int mode = (int) scanmode;
+	int mode = (intptr_t) scanmode;
 	abort_scan = 0;
 
 	curr_sat = 0;

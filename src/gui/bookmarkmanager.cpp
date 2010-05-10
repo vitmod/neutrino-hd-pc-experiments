@@ -267,7 +267,7 @@ const CBookmark * CBookmarkManager::getBookmark(CMenuTarget* parent)
 			update=false;
 			paint();
 		}
-		g_RCInput->getMsgAbsoluteTimeout( &msg, &data, &timeoutEnd );
+		g_RCInput->getMsgAbsoluteTimeout( (neutrino_msg_t*)&msg, (neutrino_msg_data_t*)&data, &timeoutEnd );
 
 		if ( msg <= CRCInput::RC_MaxRC )
 			timeoutEnd = CRCInput::calcTimeoutEnd(g_settings.timing[SNeutrinoSettings::TIMING_MENU] == 0 ? 0xFFFF : g_settings.timing[SNeutrinoSettings::TIMING_MENU]);
