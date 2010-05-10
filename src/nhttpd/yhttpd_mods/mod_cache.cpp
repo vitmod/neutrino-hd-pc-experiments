@@ -6,6 +6,7 @@
 // system
 #include <pthread.h>
 #include <sys/stat.h>
+#include <cstdio>
 // yhttpd
 #include "yconfig.h"
 #include "ytypes_globals.h"
