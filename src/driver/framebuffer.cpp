@@ -40,6 +40,12 @@
 
 #include <stdint.h>
 
+#ifdef USE_OPENGL
+#include <GL/glew.h>
+#include "rcinput.h"
+#include "glthread.h"
+#endif
+
 #include <gui/color.h>
 #include <gui/pictureviewer.h>
 #include <global.h>
@@ -196,6 +202,31 @@ void CFrameBuffer::init(const char * const fbDevice)
 {
         int tr = 0xFF;
 
+#ifdef USE_OPENGL
+	if(!mpGLThreadObj)
+	{
+		screeninfo.bits_per_pixel = 32;
+		screeninfo.xres = 720;
+		screeninfo.xres_virtual = screeninfo.xres;
+		screeninfo.yres = 576;
+		screeninfo.yres_virtual = screeninfo.yres;
+		screeninfo.bits_per_pixel = 32;
+		screeninfo.blue.length = 8;
+		screeninfo.blue.offset = 0;
+		screeninfo.green.length = 8;
+		screeninfo.green.offset = 8;
+		screeninfo.red.length = 8;
+		screeninfo.red.offset = 16;
+		screeninfo.transp.length = 8;
+		screeninfo.transp.offset = 24;
+		mpGLThreadObj = boost::shared_ptr<GLThreadObj>(new GLThreadObj(screeninfo.xres, screeninfo.yres));
+		if(mpGLThreadObj)
+		{ /* kick off the GL thread for the window */
+			mGLThread = boost::thread(boost::ref(*mpGLThreadObj));
+			mpGLThreadObj->waitInit();
+		}
+	}
+#else
 	fd = open(fbDevice, O_RDWR);
 	if(!fd) fd = open(fbDevice, O_RDWR);
 
@@ -247,7 +278,8 @@ printf("smem_start %x\n", smem_start);
         _write_gxa(gxa_base, GXA_BMP2_TYPE_REG, (3 << 16) | screeninfo.xres);
 	_write_gxa(gxa_base, GXA_BMP2_ADDR_REG, (unsigned int) fix.smem_start);
 	_write_gxa(gxa_base, GXA_CONTENT_ID_REG, 0);
-#endif
+#endif /* USE_NEVIS_GXA */
+#endif /* USE_OPENGL */
 	cache_size = 0;
 
         /* Windows Colors */
@@ -367,8 +399,14 @@ CFrameBuffer::~CFrameBuffer()
 		delete[] virtual_fb;
 		virtual_fb = NULL;
 	}
+#ifdef USE_OPENGL
+	active = false; /* keep people/infoclocks from accessing */
+	mpGLThreadObj->shutDown();
+	mGLThread.timed_join(boost::posix_time::seconds(10));
+#else
 	close(fd);
 	close(tty);
+#endif
 }
 
 int CFrameBuffer::getFileHandle() const
@@ -410,9 +448,13 @@ unsigned int CFrameBuffer::getScreenY()
 fb_pixel_t * CFrameBuffer::getFrameBufferPointer() const
 {
 	if (active || (virtual_fb == NULL))
+#ifdef USE_OPENGL
+		return reinterpret_cast<fb_pixel_t*>(mpGLThreadObj->getOSDBuffer());
+#else
 		return lfb;
 	else
 		return (fb_pixel_t *) virtual_fb;
+#endif
 }
 
 bool CFrameBuffer::getActive() const
@@ -463,6 +505,9 @@ int CFrameBuffer::setMode(unsigned int /*nxRes*/, unsigned int /*nyRes*/, unsign
 	xRes = screeninfo.xres;
 	yRes = screeninfo.yres;
 	bpp  = screeninfo.bits_per_pixel;
+#ifdef USE_OPENGL
+	stride = 4 * screeninfo.xres;
+#else
 	fb_fix_screeninfo fix;
 
 	if (ioctl(fd, FBIOGET_FSCREENINFO, &fix)<0) {
@@ -478,12 +523,15 @@ int CFrameBuffer::setMode(unsigned int /*nxRes*/, unsigned int /*nyRes*/, unsign
 		"Not using"
 #endif
 	);
+#endif
 
 	//memset(getFrameBufferPointer(), 0, stride * yRes);
 	paintBackground();
+#ifndef USE_OPENGL
         if (ioctl(fd, FBIOBLANK, FB_BLANK_UNBLANK) < 0) {
                 printf("screen unblanking failed\n");
         }
+#endif
 	return 0;
 }
 
@@ -1462,6 +1510,7 @@ void CFrameBuffer::RestoreScreen(int x, int y, int dx, int dy, fb_pixel_t * cons
 
 void CFrameBuffer::switch_signal (int signal)
 {
+#ifndef USE_OPENGL /* ignore signals for GL */
 	CFrameBuffer * thiz = CFrameBuffer::getInstance();
 	if (signal == SIGUSR1) {
 		if (virtual_fb != NULL)
@@ -1483,6 +1532,7 @@ void CFrameBuffer::switch_signal (int signal)
 		else
 			memset(thiz->lfb, 0, thiz->stride * thiz->yRes);
 	}
+#endif
 }
 
 void CFrameBuffer::Clear()

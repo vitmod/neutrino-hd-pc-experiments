@@ -24,7 +24,14 @@
 
 #ifndef __framebuffer__
 #define __framebuffer__
+
 #include <config.h>
+
+#ifdef USE_OPENGL
+#include <boost/thread.hpp>
+#include <vector>
+class GLThreadObj;
+#endif
 
 #include <stdint.h>
 #include <linux/fb.h>
@@ -114,6 +121,11 @@ class CFrameBuffer
 		bool locked;
 		std::map<std::string, rawIcon> icon_cache;
 		int cache_size;
+
+		#ifdef USE_OPENGL
+		boost::shared_ptr<GLThreadObj> mpGLThreadObj; /* the thread object */
+		boost::thread mGLThread;  /* boost thread executing the thread object */
+		#endif
 
 	public:
 		fb_pixel_t realcolor[256];
@@ -216,6 +228,5 @@ class CFrameBuffer
 		void blit2FB(void *fbbuff, uint32_t width, uint32_t height, uint32_t xoff, uint32_t yoff, uint32_t xp = 0, uint32_t yp = 0, bool transp = false);
 		bool blitToPrimary(unsigned int * data, int dx, int dy, int sw, int sh);
 };
-
 
 #endif

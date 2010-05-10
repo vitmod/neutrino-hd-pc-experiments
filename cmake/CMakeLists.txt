@@ -265,8 +265,8 @@ set(LIBNEUTRINO_FRAMEBUFFER_FBDEV_SOURCES
 
 # hw accelerated framebuffer
 set(LIBNEUTRINO_FRAMEBUFFER_GL_SOURCES
-    ${TOPDIR}/src/driver/glbuffer.h
-    ${TOPDIR}/src/driver/glbuffer.cpp
+    ${TOPDIR}/src/driver/glthread.h
+    ${TOPDIR}/src/driver/glthread.cpp
 )
 
 
@@ -757,7 +757,7 @@ include_directories(
     ${TOPDIR}/src/zapit/include
     ${TOPDIR}/lib/xmltree
     ${TOPDIR}/lib/xmltree/xmltok
-    ${TOPDIR}/lib/libupnpclient    
+    ${TOPDIR}/lib/libupnpclient
     /usr/include/freetype2 # FIXME: use freetype search
 )
 
@@ -773,6 +773,7 @@ set(FONTDIR "share/neutrino/fonts")
 set(DATADIR "share")
 set(PLUGINDIR "plugins")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+set(USE_OPENGL 1) # since the framebuffer header is different we cannot just make it a link time option!
 
 #
 # create the libraries
@@ -821,8 +822,11 @@ add_library(timerd ${NEUTRINO_LINKTYPE} ${LIBTIMERD_SOURCES})
 add_library(zapitclient ${NEUTRINO_LINKTYPE} ${LIBZAPITCLIENT_SOURCES})
 add_library(zapit ${NEUTRINO_LINKTYPE} ${LIBZAPIT_SOURCES})
 
-add_library(neutrino_framebuffer_fbdev ${NEUTRINO_LINKTYPE} ${LIBNEUTRINO_FRAMEBUFFER_FBDEV_SOURCES})
-add_library(neutrino_framebuffer_gl ${NEUTRINO_LINKTYPE} ${LIBNEUTRINO_FRAMEBUFFER_GL_SOURCES})
+if(USE_OPENGL)
+    add_definitions(-DUSE_OPENGL)
+    add_library(neutrino_framebuffer_gl ${NEUTRINO_LINKTYPE} ${LIBNEUTRINO_FRAMEBUFFER_GL_SOURCES})
+endif(USE_OPENGL)
+    add_library(neutrino_framebuffer ${NEUTRINO_LINKTYPE} ${LIBNEUTRINO_FRAMEBUFFER_FBDEV_SOURCES})
 
 add_definitions(-DDO_NOT_INCLUDE_STUFF_NOT_NEEDED_FOR_SECTIONSD)
 
@@ -877,9 +881,9 @@ target_link_libraries(neutrino
         #neutrino_driver_ringbuffer
         
         dvbapi
-        
-        #neutrino_framebuffer_fbdev # classical framebuffer device
+
         neutrino_framebuffer_gl
+        neutrino_framebuffer
         
         mad
         png
@@ -892,5 +896,7 @@ target_link_libraries(neutrino
         avcodec
         avformat
         glut
+        GLEW
+        boost_thread
 )
 

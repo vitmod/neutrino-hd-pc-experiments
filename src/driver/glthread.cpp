@@ -1,0 +1,447 @@
+/*
+	Neutrino-GUI  -   DBoxII-Project
+
+	Copyright 2010 Carsten Juttner <carjay@gmx.net>
+
+	License: GPL
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
+
+#include <iostream>
+#include <boost/format.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/thread.hpp>
+#include "GL/glew.h"
+#include "GL/freeglut.h"
+#include <string.h>
+#include <signal.h>
+#include <stdexcept>
+#include "global.h"
+#include "neutrinoMessages.h"
+#include "glthread.h"
+
+static GLThreadObj *gThiz = 0; /* GLUT does not allow for an arbitrary argument to the render func */
+
+GLThreadObj::GLThreadObj(int x, int y) : mX(x), mY(y), mReInit(true), mShutDown(false), mInitDone(false)
+{
+	mState.width  = mX;
+	mState.height = mY;
+	mState.go3d   = false;
+
+	initKeys();
+}
+
+
+GLThreadObj::~GLThreadObj()
+{
+}
+
+
+GLThreadObj::GLThreadObj(GLThreadObj &rhs)
+{
+	/* lock rhs only since this is not usable yet */
+	boost::lock_guard<boost::mutex> lock(rhs.mMutex);
+	mX = rhs.mX;
+	mY = rhs.mY;
+	mReInit     = rhs.mReInit;
+	mOSDBuffer  = rhs.mOSDBuffer;
+	mInitDone   = rhs.mInitDone;
+	mState      = rhs.mState;
+	mKeyMap     = rhs.mKeyMap;
+	mSpecialMap = rhs.mSpecialMap;
+}
+
+
+GLThreadObj const &GLThreadObj::operator= (GLThreadObj const &rhs)
+{
+	if(&rhs != this)
+	{
+		/* but here we need to lock both */
+		boost::lock_guard<boost::mutex> lock1(&mMutex < &rhs.mMutex ? mMutex : rhs.mMutex);
+		boost::lock_guard<boost::mutex> lock2(&mMutex > &rhs.mMutex ? mMutex : rhs.mMutex);
+		mX = rhs.mX;
+		mY = rhs.mY;
+		mReInit     = rhs.mReInit;
+		mOSDBuffer  = rhs.mOSDBuffer;
+		mInitDone   = rhs.mInitDone;
+		mState      = rhs.mState;
+		mKeyMap     = rhs.mKeyMap;
+		mSpecialMap = rhs.mSpecialMap;
+	}
+	return *this;
+}
+
+
+void GLThreadObj::initKeys()
+{
+	mSpecialMap[GLUT_KEY_UP]    = CRCInput::RC_up;
+	mSpecialMap[GLUT_KEY_DOWN]  = CRCInput::RC_down;
+	mSpecialMap[GLUT_KEY_LEFT]  = CRCInput::RC_left;
+	mSpecialMap[GLUT_KEY_RIGHT] = CRCInput::RC_right;
+
+	mSpecialMap[GLUT_KEY_F1] = CRCInput::RC_red;
+	mSpecialMap[GLUT_KEY_F2] = CRCInput::RC_green;
+	mSpecialMap[GLUT_KEY_F3] = CRCInput::RC_blue;
+	mSpecialMap[GLUT_KEY_F4] = CRCInput::RC_yellow;
+
+	mSpecialMap[GLUT_KEY_PAGE_UP]   = CRCInput::RC_page_up;
+	mSpecialMap[GLUT_KEY_PAGE_DOWN] = CRCInput::RC_page_down;
+
+	mKeyMap[0x0d] = CRCInput::RC_ok;
+	mKeyMap[0x1b] = CRCInput::RC_home;
+	mKeyMap['i']  = CRCInput::RC_info;
+	mKeyMap['m']  = CRCInput::RC_setup;
+	
+	mKeyMap['-']  = CRCInput::RC_spkr;
+	mKeyMap['h']  = CRCInput::RC_help;
+	
+	mKeyMap['0']  = CRCInput::RC_0;
+	mKeyMap['1']  = CRCInput::RC_1;
+	mKeyMap['2']  = CRCInput::RC_2;
+	mKeyMap['3']  = CRCInput::RC_3;
+	mKeyMap['4']  = CRCInput::RC_4;
+	mKeyMap['5']  = CRCInput::RC_5;
+	mKeyMap['6']  = CRCInput::RC_6;
+	mKeyMap['7']  = CRCInput::RC_7;
+	mKeyMap['8']  = CRCInput::RC_8;
+	mKeyMap['9']  = CRCInput::RC_9;
+}
+
+
+void GLThreadObj::operator()()
+{
+	setupCtx();
+	setupOSDBuffer();
+
+	initDone(); /* signal that setup is finished */
+
+	/* init the good stuff */
+	GLenum err = glewInit();
+	if(err == GLEW_OK)
+	{
+		if((!GLEW_VERSION_1_5)||(!GLEW_EXT_pixel_buffer_object)||(!GLEW_ARB_texture_non_power_of_two))
+		{
+			std::cout << "Sorry, your graphics card is not supported. Needs at least OpenGL 1.5, pixel buffer objects and NPOT textures." << std::endl;
+			throw std::runtime_error("incompatible graphics card");
+		}
+		else
+		{
+			gThiz = this;
+			glutDisplayFunc(GLThreadObj::rendercb);
+			glutKeyboardFunc(GLThreadObj::keyboardcb);
+			glutSpecialFunc(GLThreadObj::specialcb);
+			setupGLObjects(); /* needs GLEW prototypes */
+			glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
+			glutMainLoop();
+			releaseGLObjects();
+		}
+	}
+	else
+	{
+		std::cout << boost::format("GLThread: error initializing glew: %d") % err << std::endl;
+	}
+	if(g_RCInput)
+	{
+		g_RCInput->postMsg(NeutrinoMessages::SHUTDOWN, 0);
+	}
+	else
+	{ /* yeah, whatever... */
+		::kill(getpid(), SIGKILL);
+	}
+	std::cout << "GL thread stopping" << std::endl;
+}
+
+
+void GLThreadObj::setupCtx()
+{
+	int argc = 1;
+	/* some dummy commandline for GLUT to be happy */
+	char const *argv[2] = { "neutrino", 0 };
+	std::cout << "GL thread starting" << std::endl;
+	glutInit(&argc, const_cast<char **>(argv));
+	glutInitWindowSize(mX, mY);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	glutCreateWindow("Neutrino");
+}
+
+
+void GLThreadObj::setupOSDBuffer()
+{	/* the OSD buffer size can be decoupled from the actual
+	   window size since the GL can blit-stretch with no
+	   trouble at all, ah, the luxury of ignorance... */
+	boost::lock_guard<boost::mutex> lock(mMutex);
+	if(mState.width && mState.height)
+	{
+		mOSDBuffer.resize(mState.width * mState.height * 4);
+		std::cout << boost::format("OSD buffer set to %d bytes") % (mState.width * mState.height * 4) << std::endl;
+	}
+}
+
+
+void GLThreadObj::setupGLObjects()
+{
+	glGenTextures(1, &mState.osdtex);
+	glBindTexture(GL_TEXTURE_2D, mState.osdtex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mState.width, mState.height, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+	glGenBuffers(1, &mState.pbo);
+}
+
+
+void GLThreadObj::releaseGLObjects()
+{
+	glDeleteTextures(1, &mState.osdtex);
+	glDeleteBuffers(1, &mState.pbo);
+}
+
+
+/* static */ void GLThreadObj::rendercb()
+{
+	gThiz->render();
+}
+
+
+/* static */ void GLThreadObj::keyboardcb(unsigned char key, int x, int y)
+{
+	std::map<unsigned char, neutrino_msg_t>::const_iterator i = gThiz->mKeyMap.find(key);
+	if(i != gThiz->mKeyMap.end())
+	{ /* let's assume globals are thread-safe */
+		if(g_RCInput)
+		{
+			g_RCInput->postMsg(i->second, 0);
+		}
+	}
+
+}
+
+
+/* static */ void GLThreadObj::specialcb(int key, int x, int y)
+{
+	std::map<int, neutrino_msg_t>::const_iterator i = gThiz->mSpecialMap.find(key);
+	if(key == GLUT_KEY_F12)
+	{
+		gThiz->mState.go3d = gThiz->mState.go3d ? false : true;
+		gThiz->mReInit = true;
+	}
+	else if(i != gThiz->mSpecialMap.end())
+	{
+		if(g_RCInput)
+		{
+			g_RCInput->postMsg(i->second, 0);
+		}
+	}
+}
+	
+
+void GLThreadObj::render() {
+	if(!mReInit)
+	{   /* for example if window is resized */
+		checkReinit();
+	}
+
+	if(mShutDown) 
+	{
+		glutLeaveMainLoop();
+	}
+
+	if(mReInit)
+	{
+		mReInit = false;
+		glViewport(0, 0, mX, mY);
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		float aspect = static_cast<float>(mX)/mY;
+		float osdaspect = 1.0/(static_cast<float>(mState.width)/mState.height);
+		if(!mState.go3d)
+		{
+			glOrtho(aspect*-osdaspect, aspect*osdaspect, -1.0, 1.0, -1.0, 1.0 );
+			glClearColor(0.0, 0.0, 0.0, 1.0);
+		}
+		else
+		{
+			gluPerspective(45.0, static_cast<float>(mX)/mY, 0.05, 1000.0);
+			glTranslatef(0.0, 0.0, -2.0);
+			glClearColor(0.25, 0.25, 0.25, 1.0);
+		}
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_TEXTURE_2D);
+	}
+		
+	bltOSDBuffer(); /* OSD */
+
+	glBindTexture(GL_TEXTURE_2D, mState.osdtex);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// cube test
+	if(mState.go3d)
+	{
+		static float ydeg = 0.0;
+		glPushMatrix();
+		glRotatef(ydeg, 0.0, 1.0, 0.0);
+		drawCube(0.5);
+		glPopMatrix();
+		ydeg += 0.75f;
+	}
+	else
+	{
+		drawSquare(1.0);
+	}
+
+	
+	glFlush();
+	glutSwapBuffers();
+	
+	GLuint err = glGetError();
+	if(err != 0)
+	{
+		std::cout << (boost::format("GLError:%d 0x%04x") % err % err) << std::endl;
+	}
+
+	boost::thread::sleep(boost::get_system_time() + boost::posix_time::milliseconds(20));
+	glutPostRedisplay();
+}
+
+
+void GLThreadObj::checkReinit()
+{
+	int x = glutGet(GLUT_WINDOW_WIDTH);
+	int y = glutGet(GLUT_WINDOW_HEIGHT);
+	if( x != mX || y != mY )
+	{
+		mX = x;
+		mY = y;
+		mReInit = true;
+	}
+}
+
+
+void GLThreadObj::drawCube(float size)
+{
+	GLfloat vertices[] = {  1.0f,  1.0f,  1.0f,
+						   -1.0f,  1.0f,  1.0f,
+						   -1.0f, -1.0f,  1.0f,
+						    1.0f, -1.0f,  1.0f,
+						    1.0f, -1.0f, -1.0f,
+						    1.0f,  1.0f, -1.0f,
+						   -1.0f,  1.0f, -1.0f,
+						   -1.0f, -1.0f, -1.0f
+						};
+	
+	GLubyte indices[] = {
+						0, 1, 2, 3, /* front  */
+	                    0, 3, 4, 5, /* right  */
+	                    0, 5, 6, 1, /* top    */
+	                    1, 6, 7, 2, /* left   */
+	                    7, 4, 3, 2, /* bottom */
+	                    4, 7, 6, 5, /* back   */
+						};
+		
+	GLfloat texcoords[] = { 1.0, 0.0, // v0
+						    0.0, 0.0, // v1
+							0.0, 1.0, // v2
+						    1.0, 1.0, // v3
+						   
+						   0.0, 1.0, // v4 
+						   0.0, 0.0, // v5
+						   1.0, 0.0, // v6
+						   1.0, 1.0, // v7
+						 };
+	
+	glPushMatrix();
+	glScalef(size, size, size);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glVertexPointer(3, GL_FLOAT, 0, vertices);
+	glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
+	glDrawElements(GL_QUADS, 24, GL_UNSIGNED_BYTE, indices);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glPopMatrix();
+}
+
+
+void GLThreadObj::drawSquare(float size)
+{
+	GLfloat vertices[] = {
+						    1.0f,  1.0f,
+						   -1.0f,  1.0f,
+						   -1.0f, -1.0f,
+						    1.0f, -1.0f,
+						 };
+	
+	GLubyte indices[] = { 0, 1, 2, 3 };
+	
+	GLfloat texcoords[] = {
+						    1.0, 0.0,
+						    0.0, 0.0,
+							0.0, 1.0,
+						    1.0, 1.0,
+						  };
+	
+	glPushMatrix();
+	glScalef(size, size, size);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	glVertexPointer(2, GL_FLOAT, 0, vertices);
+	glTexCoordPointer(2, GL_FLOAT, 0, texcoords);
+	glDrawElements(GL_QUADS, 4, GL_UNSIGNED_BYTE, indices);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+	glPopMatrix();
+}
+
+
+void GLThreadObj::initDone()
+{
+	boost::lock_guard<boost::mutex> lock(mMutex);
+	mInitDone = true;
+	mInitCond.notify_all();
+}
+
+
+void GLThreadObj::waitInit()
+{
+	boost::unique_lock<boost::mutex> lock(mMutex);
+	while(!mInitDone) 
+	{
+		mInitCond.wait(lock);
+	}
+}
+
+
+void GLThreadObj::bltOSDBuffer()
+{
+	/* FIXME: copy each time  */
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mState.pbo);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, mOSDBuffer.size(), &mOSDBuffer[0], GL_STREAM_DRAW_ARB);
+
+	glBindTexture(GL_TEXTURE_2D, mState.osdtex);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mState.width, mState.height, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
+
+void GLThreadObj::clear()
+{
+	memset(&mOSDBuffer[0], 0, mOSDBuffer.size());
+}
+
