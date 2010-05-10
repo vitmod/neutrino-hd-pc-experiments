@@ -236,7 +236,8 @@ printf("[update] filename %s type %c newVersion %s md5 %s\n", filename.c_str(), 
 bool CFlashUpdate::getUpdateImage(const std::string & version)
 {
 	CHTTPTool httpTool;
-	char * fname, dest_name[100];
+	char const * fname;
+	char dest_name[100];
 	httpTool.setStatusViewer(this);
 
 	fname = rindex(filename.c_str(), '/');
@@ -333,7 +334,7 @@ printf("[update] mode is %d\n", g_settings.softupdate_mode);
 			return false;
 		}
 		hide();
-		char * ptr = rindex(filename.c_str(), '.');
+		char const * ptr = rindex(filename.c_str(), '.');
 		if(ptr) {
 			ptr++;
 			if(!strcmp(ptr, "bin")) fileType = 'A';
@@ -374,7 +375,7 @@ int CFlashUpdate::exec(CMenuTarget* parent, const std::string &)
 
 	if(g_settings.softupdate_mode==1) //internet-update
 	{
-		char * fname = rindex(filename.c_str(), '/') +1;
+		char const * fname = rindex(filename.c_str(), '/') +1;
 		char fullname[255];
 
 		if(!getUpdateImage(newVersion)) {
