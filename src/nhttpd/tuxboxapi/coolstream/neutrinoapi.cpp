@@ -213,7 +213,7 @@ bool CNeutrinoAPI::GetStreamInfo(int bitInfo[10])
 
 	if (fd == NULL)
 	{
-		dprintf("error while opening proc-bitstream\n" );
+		dbgprintf("error while opening proc-bitstream\n" );
 		return false;
 	}
 

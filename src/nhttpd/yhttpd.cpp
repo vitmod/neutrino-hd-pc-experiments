@@ -122,7 +122,7 @@ void * nhttpd_main_thread(void *) {
 	if (yhttpd->Configure()) {
 		// Start Webserver: fork ist if not in debug mode
 		aprintf("Webserver starting...\n");
-		dprintf("Start in Debug-Mode\n"); // non forked debugging loop
+		dbgprintf("Start in Debug-Mode\n"); // non forked debugging loop
 
 		yhttpd->run();
 	}

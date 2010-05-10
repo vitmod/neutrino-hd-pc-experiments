@@ -76,7 +76,7 @@ class CLogging
 	do { if(CLogging::getInstance()->LogLevel>=level) CLogging::getInstance()->printf("[yhttpd#%d(%s:%d)] " fmt, level, __FILE__, __LINE__, ## args); } while (0)
 
 // print only if debug is on
-#define dprintf(fmt, args...) \
+#define dbgprintf(fmt, args...) \
 	do { if(CLogging::getInstance()->getDebug())CLogging::getInstance()->printf("[yhttpd] " fmt, ## args); } while (0)
 
 // print string to stdandard error
