@@ -274,9 +274,9 @@ int iscale(int value, int numer, int denom)
 /*
         fix_dot() - dot product of two fixed arrays
 */
-fixed fix_dot(fixed */*hpa*/, fixed *pb, int n)
+fixed fix_dot(fixed *hpa, fixed *pb, int n)
 {
-        fixed *pa = NULL;
+        fixed *pa = 0;
         long sum;
         register fixed a,b;
         //unsigned int seg,off;
