@@ -272,7 +272,11 @@ int cDvbSubtitleConverter::Convert(const uchar *Data, int Length, int64_t pts)
 	dbgconverter("cDvbSubtitleConverter::Convert: sub %x pkt %x pts %lld\n", sub, &avpkt, pts);
 	//avctx->sub_id = (anc_page << 16) | comp_page; //FIXME not patched ffmpeg needs this !
 
+#if (LIBAVCODEC_VERSION_MAJOR < 52) || (LIBAVCODEC_VERSION_MAJOR == 52 && LIBAVCODEC_VERSION_MINOR < 23)
+	avcodec_decode_subtitle(avctx, sub, &got_subtitle, avpkt.data, avpkt.size);
+#else
 	avcodec_decode_subtitle2(avctx, sub, &got_subtitle, &avpkt);
+#endif
 	dbgconverter("cDvbSubtitleConverter::Convert: pts %lld subs ? %s, %d bitmaps\n", pts, got_subtitle? "yes" : "no", sub->num_rects);
 
 	if(got_subtitle) {
