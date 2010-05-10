@@ -134,6 +134,9 @@
 #include <init_cs.h>
 #include <pwrmngr.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <init_cs.h>
+#endif
 #include <video.h>
 #include <audio.h>
 #include <zapit/frontend_c.h>

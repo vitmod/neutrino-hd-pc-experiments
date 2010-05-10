@@ -70,6 +70,10 @@
 #include <video_td.h>
 #include <audio_td.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <video_dvbapi.h>
+#include <audio_dvbapi.h>
+#endif
 
 #include "libdvbsub/dvbsub.h"
 #include "libtuxtxt/teletext.h"

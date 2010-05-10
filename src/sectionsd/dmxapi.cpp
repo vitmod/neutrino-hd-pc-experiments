@@ -32,8 +32,10 @@
 
 #if HAVE_TRIPLEDRAGON
 #include <dmx_td.h>
-#else
+#elif HAVE_COOL_HARDWARE
 #include <dmx_cs.h>
+#elif HAVE_PC_HARDWARE
+#include <dmx_dvbapi.h>
 #endif
 
 #ifndef DO_NOT_INCLUDE_STUFF_NOT_NEEDED_FOR_SECTIONSD

@@ -35,6 +35,9 @@
 #if HAVE_TRIPLEDRAGON
 #include <dmx_td.h>
 #endif
+#if HAVE_PC_HARDWARE
+#include <dmx_dvbapi.h>
+#endif
 
 typedef uint64_t sections_id_t;
 typedef unsigned char version_number_t;

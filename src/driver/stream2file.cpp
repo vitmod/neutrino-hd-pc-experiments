@@ -63,6 +63,7 @@
 #include <driver/lcdd.h>
 #endif
 #if HAVE_PC_HARDWARE
+#include <record_dvbapi.h>
 #include <driver/dummy/vfd.h>
 #endif
 #include <zapit/cam.h>
