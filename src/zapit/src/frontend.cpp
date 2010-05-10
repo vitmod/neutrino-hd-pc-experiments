@@ -623,6 +623,7 @@ void CFrontend::getDelSys(int f, int m, char *&fec, char *&sys, char *&mod)
 	}
 }
 
+#if HAVE_TRIPLEDRAGON
 bool td_fe_set_property(int devfd, struct dtv_properties *p)
 {
 	/* convert dtv_properties to tunersetup... */
@@ -659,6 +660,7 @@ bool td_fe_set_property(int devfd, struct dtv_properties *p)
 	}
 	return true;
 }
+#endif
 
 int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool /*nowait*/)
 {
