@@ -210,8 +210,8 @@ class CRCInput
 			RC_zoomin	= KEY_FN_F4,
 			RC_zoomout	= KEY_FN_F5,
 
-			RC_timeout	= 0xFFFFFFFF,
-			RC_nokey	= 0xFFFFFFFE
+			RC_timeout	= -1,
+			RC_nokey	= -2
 		};
 
 		inline int getFileHandle(void) /* used for plugins (i.e. games) only */
