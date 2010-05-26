@@ -102,7 +102,7 @@ class CVFD
 		bool has_lcd;
 		void setlcdparameter(void) {}
 
-		static CVFD* getInstance() { static CVFD gSingleton; return &gSingleton; }
+		static CVFD* getInstance() { return new CVFD(); } /* deleted at shutdown */
 		void init(const char * fontfile, const char * fontname) {}
 
 		void setMode(const MODES m, const char * const title = "") {}
