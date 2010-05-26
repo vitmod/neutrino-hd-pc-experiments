@@ -59,6 +59,12 @@ class cDemux
 		//
 		cDemux(int num = 0);
 		~cDemux();
+		
+	private:
+		int mHandle; /* us poor 'vice, us only got one */
+		int mLen; /* length by of section filter */
+		DMX_CHANNEL_TYPE mPesType;
+
 };
 
 #endif //__DEMUX_H
