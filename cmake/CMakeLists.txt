@@ -105,7 +105,7 @@ set(LIBTUXBOX_NET_SOURCES
 )
 
 
-set(LIBTRIPLE_SOURCES,
+set(LIBTRIPLE_SOURCES
     ${TOPDIR}/lib/libtriple/dvbci_session.cpp
     ${TOPDIR}/lib/libtriple/dvbci_camgr.h
     ${TOPDIR}/lib/libtriple/init_td.cpp
@@ -269,6 +269,11 @@ set(LIBNEUTRINO_FRAMEBUFFER_GL_SOURCES
     ${TOPDIR}/src/driver/glthread.cpp
 )
 
+# sw decoder (using dvr output)
+set(SWDECODER_SOURCES
+    ${TOPDIR}/src/driver/decodethread.h
+    ${TOPDIR}/src/driver/decodethread.cpp
+)
 
 set(LIBNEUTRINO_DRIVER_SOURCES
     ${TOPDIR}/src/driver/encoding.h
@@ -821,6 +826,7 @@ add_library(neutrino_system ${NEUTRINO_LINKTYPE} ${LIBNEUTRINO_SYSTEM_SOURCES})
 add_library(timerd ${NEUTRINO_LINKTYPE} ${LIBTIMERD_SOURCES})
 add_library(zapitclient ${NEUTRINO_LINKTYPE} ${LIBZAPITCLIENT_SOURCES})
 add_library(zapit ${NEUTRINO_LINKTYPE} ${LIBZAPIT_SOURCES})
+add_library(swdecoder ${NEUTRINO_LINKTYPE} ${SWDECODER_SOURCES})
 
 if(USE_OPENGL)
     add_definitions(-DUSE_OPENGL)
@@ -881,6 +887,7 @@ target_link_libraries(neutrino
         #neutrino_driver_ringbuffer
         
         dvbapi
+		swdecoder
 
         neutrino_framebuffer_gl
         neutrino_framebuffer
@@ -895,6 +902,7 @@ target_link_libraries(neutrino
         ungif
         avcodec
         avformat
+        swscale
         glut
         GLEW
         boost_thread

@@ -43,6 +43,7 @@
 #ifdef USE_OPENGL
 #include <GL/glew.h>
 #include "rcinput.h"
+#include <boost/shared_ptr.hpp>
 #include "glthread.h"
 #endif
 

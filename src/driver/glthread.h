@@ -22,7 +22,7 @@
 
 #ifndef __glthread__
 #define __glthread__
-
+class SWDecoder;
 
 class GLThreadObj
 {
@@ -78,11 +78,17 @@ private:
 		int width;	   /* width and height, fixed for a framebuffer instance */
 		int height;
 		GLuint osdtex; /* holds the OSD texture */
+		GLuint displaytex; /* holds the display texture */
+		GLuint displaypbo;
 		GLuint pbo;    /* PBO we use for transfer to texture */
 		int go3d;
 	} mState;
 	
+	boost::shared_ptr<SWDecoder>mpSWDecoder; /* our Decoder-Object that runs in its own thread */
+	boost::thread mSWDecoderThread; /* thread running the decoder */
+	
 	void bltOSDBuffer();
+	void bltDisplayBuffer();
 };
 
 

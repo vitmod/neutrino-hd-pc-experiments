@@ -21,18 +21,29 @@
 */
 
 #include <iostream>
+#include <vector>
+#include <deque>
 #include <boost/format.hpp>
-#include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/thread.hpp>
-#include "GL/glew.h"
-#include "GL/freeglut.h"
-#include <string.h>
-#include <signal.h>
 #include <stdexcept>
 #include "global.h"
 #include "neutrinoMessages.h"
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <signal.h>
+#include "GL/glew.h"
+#include "GL/freeglut.h"
+}
+#include "decodethread.h"
+#include <boost/shared_ptr.hpp>
 #include "glthread.h"
 
 static GLThreadObj *gThiz = 0; /* GLUT does not allow for an arbitrary argument to the render func */
@@ -141,6 +152,13 @@ void GLThreadObj::operator()()
 		}
 		else
 		{
+			/* start decode thread */
+			mpSWDecoder = boost::shared_ptr<SWDecoder>(new SWDecoder());
+			if(mpSWDecoder)
+			{ /* kick off the GL thread for the window */
+				mSWDecoderThread = boost::thread(boost::ref(*mpSWDecoder));
+			}
+			
 			gThiz = this;
 			glutDisplayFunc(GLThreadObj::rendercb);
 			glutKeyboardFunc(GLThreadObj::keyboardcb);
@@ -149,6 +167,12 @@ void GLThreadObj::operator()()
 			glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_CONTINUE_EXECUTION);
 			glutMainLoop();
 			releaseGLObjects();
+			
+			if(mpSWDecoder)
+			{
+				mpSWDecoder->doFinish();
+				mSWDecoderThread.join();
+			}
 		}
 	}
 	else
@@ -196,19 +220,29 @@ void GLThreadObj::setupOSDBuffer()
 void GLThreadObj::setupGLObjects()
 {
 	glGenTextures(1, &mState.osdtex);
+	glGenTextures(1, &mState.displaytex);
 	glBindTexture(GL_TEXTURE_2D, mState.osdtex);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mState.width, mState.height, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
+	glBindTexture(GL_TEXTURE_2D, mState.displaytex); /* we do not yet know the size so will set that inline */
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
 	glGenBuffers(1, &mState.pbo);
+	glGenBuffers(1, &mState.displaypbo);
 }
 
 
 void GLThreadObj::releaseGLObjects()
 {
 	glDeleteTextures(1, &mState.osdtex);
+	glDeleteTextures(1, &mState.displaytex);
 	glDeleteBuffers(1, &mState.pbo);
+	glDeleteBuffers(1, &mState.displaypbo);
 }
 
 
@@ -260,7 +294,7 @@ void GLThreadObj::render() {
 	{
 		glutLeaveMainLoop();
 	}
-
+	
 	if(mReInit)
 	{
 		mReInit = false;
@@ -282,10 +316,13 @@ void GLThreadObj::render() {
 		}
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
 		glEnable(GL_TEXTURE_2D);
+		glDisable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
 		
+	bltDisplayBuffer(); /* decoded video stream */
 	bltOSDBuffer(); /* OSD */
 
 	glBindTexture(GL_TEXTURE_2D, mState.osdtex);
@@ -293,15 +330,23 @@ void GLThreadObj::render() {
 	// cube test
 	if(mState.go3d)
 	{
+		glEnable(GL_DEPTH_TEST);
 		static float ydeg = 0.0;
 		glPushMatrix();
 		glRotatef(ydeg, 0.0, 1.0, 0.0);
+		glBindTexture(GL_TEXTURE_2D, mState.displaytex);
+		drawCube(0.5);
+		glScalef(1.01, 1.01, 1.01);
+		glBindTexture(GL_TEXTURE_2D, mState.osdtex);
 		drawCube(0.5);
 		glPopMatrix();
 		ydeg += 0.75f;
 	}
 	else
 	{
+		glBindTexture(GL_TEXTURE_2D, mState.displaytex);
+		drawSquare(1.0);
+		glBindTexture(GL_TEXTURE_2D, mState.osdtex);
 		drawSquare(1.0);
 	}
 
@@ -440,8 +485,27 @@ void GLThreadObj::bltOSDBuffer()
 }
 
 
+void GLThreadObj::bltDisplayBuffer()
+{
+	if(mpSWDecoder)
+	{
+		SWDecoder::pBuffer_t displaybuffer = mpSWDecoder->acquireDisplayBuffer();
+		if(displaybuffer != 0)
+		{
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, mState.displaypbo);
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, displaybuffer->size(), &(*displaybuffer)[0], GL_STREAM_DRAW_ARB);
+
+			glBindTexture(GL_TEXTURE_2D, mState.displaytex);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, displaybuffer->width(), displaybuffer->height(), 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+
+			glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+			mpSWDecoder->returnDisplayBuffer(displaybuffer);
+		}
+	}
+}
+
+
 void GLThreadObj::clear()
 {
 	memset(&mOSDBuffer[0], 0, mOSDBuffer.size());
 }
-
