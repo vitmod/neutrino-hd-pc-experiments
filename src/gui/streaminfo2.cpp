@@ -554,6 +554,9 @@ void CStreamInfo2::paint_techinfo(int xpos, int ypos)
 		else if(frontend->getInfo()->type == FE_QAM) {
 			sprintf ((char *) buf, "%s:",g_Locale->getText (LOCALE_CHANNELLIST_PROVS));
 		}
+		else if(frontend->getInfo()->type == FE_OFDM) {
+			sprintf ((char *) buf, "%s:",g_Locale->getText (LOCALE_CHANNELLIST_PROVS));
+		}
 		g_Font[font_info]->RenderString(xpos, ypos, width*2/3-10, buf, COL_MENUCONTENTDARK, 0, true); // UTF-8
 		sprintf ((char *) buf, "%s", sit->second.name.c_str());
 		g_Font[font_info]->RenderString (xpos+spaceoffset, ypos, width*2/3-10, buf, COL_MENUCONTENTDARK, 0, true);	// UTF-8
@@ -587,7 +590,7 @@ void CStreamInfo2::paint_techinfo(int xpos, int ypos)
 		g_Font[font_info]->RenderString(xpos, ypos, width*2/3-10, "Tp. Freq.:" , COL_MENUCONTENTDARK, 0, true); // UTF-8
 		g_Font[font_info]->RenderString(xpos+spaceoffset, ypos, width*2/3-10, buf, COL_MENUCONTENTDARK, 0, true); // UTF-8
 	}
-	else if(frontend->getInfo()->type == FE_QAM) {
+	else if((frontend->getInfo()->type == FE_QAM) || (frontend->getInfo()->type == FE_OFDM)) {
 		sprintf ((char *) buf, "%s",g_Locale->getText (LOCALE_SCANTS_FREQDATA));
 		g_Font[font_info]->RenderString(xpos, ypos, width*2/3-10, buf , COL_MENUCONTENTDARK, 0, true); // UTF-8
 		sprintf((char*) buf, "%d.%d MHz", si.tsfrequency/1000, si.tsfrequency%1000);

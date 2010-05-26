@@ -545,6 +545,14 @@ public:
 	char		TP_freq[10];
 	char		TP_rate[9];
 
+	int TP_bandwidth;
+	int TP_code_rate_lp;
+	int TP_code_rate_hp;
+	int TP_guard_interval;
+	int TP_transmission_mode;
+	int TP_hierarchy_information;
+	int TP_inversion;
+
 	CScanSettings();
 
 	void toSatList( CZapitClient::ScanSatelliteList& ) const;

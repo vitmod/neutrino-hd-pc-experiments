@@ -708,6 +708,10 @@ void parseScanInputXml(void)
 		scanInputParser = parseXmlFile(CABLES_XML);
 		break;
 
+	case FE_OFDM:
+		scanInputParser = parseXmlFile(TERRESTRIAL_XML);
+		break;
+
 	default:
 		WARN("Unknown type %d", frontend->getInfo()->type);
 		return;
@@ -1042,8 +1046,7 @@ DBG("[zapit] sending EVT_SERVICES_CHANGED\n");
 			const char *name = scanProviders.size() > 0  ? scanProviders.begin()->second.c_str() : "unknown";
 
 			switch (frontend->getInfo()->type) {
-			case FE_QPSK:
-			case FE_OFDM: {
+			case FE_QPSK: {
 				t_satellite_position satellitePosition = scanProviders.begin()->first;
 				printf("[zapit] tune to sat %s freq %d rate %d fec %d pol %d\n", name, TP.feparams.frequency, TP.feparams.u.qpsk.symbol_rate, TP.feparams.u.qpsk.fec_inner, TP.polarization);
 				frontend->setInput(satellitePosition, TP.feparams.frequency,  TP.polarization);
@@ -1052,6 +1055,9 @@ DBG("[zapit] sending EVT_SERVICES_CHANGED\n");
 			}
 			case FE_QAM:
 				printf("[zapit] tune to cable %s freq %d rate %d fec %d\n", name, TP.feparams.frequency, TP.feparams.u.qam.symbol_rate, TP.feparams.u.qam.fec_inner);
+				break;
+			case FE_OFDM:
+				printf("[zapit] tune to transponder %s freq %d\n", name, TP.feparams.frequency);
 				break;
 			default:
 				WARN("Unknown type %d", frontend->getInfo()->type);
@@ -1071,7 +1077,6 @@ printf("[zapit] TP_id %d freq %d rate %d fec %d pol %d\n", TP.TP_id, TP.feparams
 			TP.feparams.frequency = transponder->second.feparams.frequency;
 			switch (frontend->getInfo()->type) {
 			case FE_QPSK:
-			case FE_OFDM:
 				TP.feparams.u.qpsk.symbol_rate = transponder->second.feparams.u.qpsk.symbol_rate;
 				TP.feparams.u.qpsk.fec_inner = transponder->second.feparams.u.qpsk.fec_inner;
 				TP.polarization = transponder->second.polarization;
@@ -1080,6 +1085,16 @@ printf("[zapit] TP_id %d freq %d rate %d fec %d pol %d\n", TP.TP_id, TP.feparams
 				TP.feparams.u.qam.symbol_rate = transponder->second.feparams.u.qam.symbol_rate;
 				TP.feparams.u.qam.fec_inner = transponder->second.feparams.u.qam.fec_inner;
 				TP.feparams.u.qam.modulation = transponder->second.feparams.u.qam.modulation;
+				break;
+			case FE_OFDM:
+				TP.feparams.inversion = transponder->second.feparams.inversion;
+				TP.feparams.u.ofdm.bandwidth = transponder->second.feparams.u.ofdm.bandwidth;
+				TP.feparams.u.ofdm.constellation = transponder->second.feparams.u.ofdm.constellation;
+				TP.feparams.u.ofdm.code_rate_HP = transponder->second.feparams.u.ofdm.code_rate_HP;
+				TP.feparams.u.ofdm.code_rate_LP = transponder->second.feparams.u.ofdm.code_rate_LP;
+				TP.feparams.u.ofdm.guard_interval = transponder->second.feparams.u.ofdm.guard_interval;
+				TP.feparams.u.ofdm.transmission_mode = transponder->second.feparams.u.ofdm.transmission_mode;
+				TP.feparams.u.ofdm.hierarchy_information = transponder->second.feparams.u.ofdm.hierarchy_information;
 				break;
 			default:
 				WARN("Unknown type %d", frontend->getInfo()->type);
@@ -2335,7 +2350,15 @@ printf("[sdt monitor] wakeup...\n");
                                         tI->second.feparams.u.qam.symbol_rate, tI->second.feparams.u.qam.fec_inner,
                                         tI->second.feparams.u.qam.modulation);
                                         break;
-                                case FE_OFDM:
+                                case FE_OFDM: /* terrestrial */
+					sprintf(satstr, "\t<%s name=\"%s\"\n", "transponder", spos_it->second.name.c_str());
+										sprintf(tpstr, "\t\t<TS id=\"%04x\" on=\"%04x\" frq=\"%u\" inv=\"%hu\" bw=\"%u\" const=\"%u\" crhp=\"%u\" crlp=\"%u\" guard=\"%u\" tmode=\"%u\" hi=\"%u\">\n",
+										tI->second.transport_stream_id, tI->second.original_network_id,
+										tI->second.feparams.frequency, tI->second.feparams.inversion,
+										tI->second.feparams.u.ofdm.bandwidth, tI->second.feparams.u.ofdm.constellation,
+										tI->second.feparams.u.ofdm.code_rate_HP, tI->second.feparams.u.ofdm.code_rate_LP,
+										tI->second.feparams.u.ofdm.guard_interval, tI->second.feparams.u.ofdm.transmission_mode,
+										tI->second.feparams.u.ofdm.hierarchy_information);
                                 default:
                                         break;
                         }

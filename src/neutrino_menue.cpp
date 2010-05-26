@@ -990,6 +990,9 @@ int CTPSelectHandler::exec(CMenuTarget* parent, const std::string &/*actionkey*/
 			snprintf(buf, sizeof(buf), "%d %d %s %s %s ", tI->second.feparams.frequency/1000, tI->second.feparams.u.qam.symbol_rate/1000, f, s, m);
 			break;
 		case FE_OFDM:
+			frontend->getDelSys(tI->second.feparams.u.ofdm.code_rate_HP, tI->second.feparams.u.ofdm.constellation, f, s, m);
+			snprintf(buf, sizeof(buf), "%d %s %s %s ", tI->second.feparams.frequency/1000, f, s, m);
+			break;
 		case FE_ATSC:
 			break;
 		}
@@ -1128,6 +1131,17 @@ void CNeutrinoApp::InitScanSettings(CMenuWidget &settings)
 			}
 			dprintf(DEBUG_DEBUG, "got scanprovider (cable): %s\n", sit->second.name.c_str());
 		}
+	} else if (g_info.delivery_system == DVB_T) {
+		satSelect = new CMenuOptionStringChooser(LOCALE_TERRESTRIALSETUP_PROVIDER, (char*)scanSettings.satNameNoDiseqc, true);
+		for (sit = satellitePositions.begin(); sit != satellitePositions.end(); sit++) {
+			printf("Adding terrestrial menu for %s position %d\n", sit->second.name.c_str(), sit->first);
+			satSelect->addOption(sit->second.name.c_str());
+			if (currentSatellitePosition == sit->first) {
+				strcpy(scanSettings.satNameNoDiseqc, sit->second.name.c_str());
+				sfound = 1;
+			}
+			dprintf(DEBUG_DEBUG, "got scanprovider (terrestrial): %s\n", sit->second.name.c_str());
+		}
 	}
 	satfindMenu->addItem(satSelect);
 
@@ -1146,6 +1160,8 @@ void CNeutrinoApp::InitScanSettings(CMenuWidget &settings)
 	if (g_info.delivery_system == DVB_S)
 		mod_pol = new CMenuOptionChooser(LOCALE_EXTRA_POL, (int *)&scanSettings.TP_pol, SATSETUP_SCANTP_POL, SATSETUP_SCANTP_POL_COUNT, true, NULL, CRCInput::convertDigitToKey(4));
 	else if (g_info.delivery_system == DVB_C)
+		mod_pol = new CMenuOptionChooser(LOCALE_EXTRA_MOD, (int *)&scanSettings.TP_mod, SATSETUP_SCANTP_MOD, SATSETUP_SCANTP_MOD_COUNT, true, NULL, CRCInput::convertDigitToKey(4));
+	else if (g_info.delivery_system == DVB_T) // FIXME for DVBT
 		mod_pol = new CMenuOptionChooser(LOCALE_EXTRA_MOD, (int *)&scanSettings.TP_mod, SATSETUP_SCANTP_MOD, SATSETUP_SCANTP_MOD_COUNT, true, NULL, CRCInput::convertDigitToKey(4));
 
 	satfindMenu->addItem(Freq);

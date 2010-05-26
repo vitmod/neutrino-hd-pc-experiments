@@ -118,16 +118,40 @@ static struct dtv_properties dvbc_cmdseq = {
 	sizeof(dvbc_cmdargs) / sizeof(struct dtv_property), dvbc_cmdargs
 };
 
-#define FREQUENCY	0
-#define MODULATION	1
-#define INVERSION	2
-#define SYMBOL_RATE	3
-#define BANDWIDTH	3
-#define VOLTAGE		4
-#define TONE		5
-#define INNER_FEC	6
-#define PILOTS		8
-#define ROLLOFF		9
+static struct dtv_property dvbt_cmdargs[] = {
+	{ DTV_FREQUENCY,	{}, { 0			} ,0},
+	{ DTV_MODULATION,   {}, { QAM_AUTO }, 0},
+	{ DTV_INVERSION,	{}, { INVERSION_AUTO	} ,0},
+	{ DTV_BANDWIDTH_HZ, {}, { 8000000 }, 0},
+	{ DTV_CODE_RATE_HP, {}, { FEC_AUTO }, 0},
+	{ DTV_CODE_RATE_LP, {}, { FEC_AUTO }, 0},
+	{ DTV_TRANSMISSION_MODE, {}, { TRANSMISSION_MODE_AUTO }, 0},
+	{ DTV_DELIVERY_SYSTEM, {}, { SYS_DVBT }, 0},
+	{ DTV_GUARD_INTERVAL, {}, { GUARD_INTERVAL_AUTO }, 0},
+	{ DTV_HIERARCHY, {}, { HIERARCHY_AUTO }, 0},
+	{ DTV_TUNE,	{}, { 0			},0	  },
+};
+
+static struct dtv_properties dvbt_cmdseq = {
+	sizeof(dvbt_cmdargs) / sizeof(struct dtv_property), dvbt_cmdargs
+};
+
+#define FREQUENCY	      0
+#define MODULATION	      1
+#define INVERSION	      2
+#define SYMBOL_RATE	      3
+#define BANDWIDTH	      3
+#define VOLTAGE		      4
+#define CODE_RATE_HP      4
+#define TONE		      5
+#define CODE_RATE_LP      5
+#define INNER_FEC	      6
+#define TRANSMISSION_MODE 6
+/* DELIVERY_SYSTEM        7 */
+#define PILOTS		      8
+#define GUARD_INTERVAL    8
+#define ROLLOFF		      9
+#define HIERARCHY         9
 
 #define diff(x,y)	(max(x,y) - min(x,y))
 
@@ -543,8 +567,12 @@ void CFrontend::getDelSys(int f, int m, char *&fec, char *&sys, char *&mod)
 			sys = (char *)"DVB-S2";
 			mod = (char *)"8PSK";
 		}
-	} else if (info.type == FE_QAM) {
-		sys = (char *)"DVB";
+	} else if (info.type == FE_QAM || info.type == FE_OFDM) {
+		if(info.type == FE_QAM) {
+			sys = (char *)"DVB";
+		} else {
+			sys = (char *)"DVBT";
+		}
 		switch (m) {
 		case QAM_16:
 			mod = (char *)"QAM_16";
@@ -684,6 +712,11 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 		modulation = feparams->u.qam.modulation;
 		delsys = SYS_DVBC_ANNEX_AC;
 		break;
+	case FE_OFDM:
+		fec_inner = feparams->u.ofdm.code_rate_HP;
+		modulation = feparams->u.ofdm.constellation;
+		delsys = SYS_DVBT;
+		break;
 	default:
 		printf("frontend: unknown frontend type, exiting\n");
 		return 0;
@@ -788,6 +821,35 @@ int CFrontend::setFrontend(const struct dvb_frontend_parameters *feparams, bool 
 		p->props[MODULATION].u.data	= modulation;
 		p->props[INNER_FEC].u.data	= fec_inner;
 		p->props[SYMBOL_RATE].u.data	= feparams->u.qam.symbol_rate;
+		break;
+	case FE_OFDM:
+		p = &dvbt_cmdseq;
+		p->props[FREQUENCY].u.data = feparams->frequency * 1000; /* frequency is in Hz */
+		p->props[MODULATION].u.data = feparams->u.ofdm.constellation;
+		p->props[INVERSION].u.data = feparams->inversion;
+		switch(feparams->u.ofdm.bandwidth)
+		{
+		case BANDWIDTH_6_MHZ:
+			p->props[BANDWIDTH].u.data = 6000000;
+			break;
+		case BANDWIDTH_7_MHZ:
+			p->props[BANDWIDTH].u.data = 7000000;
+			break;
+		case BANDWIDTH_8_MHZ:
+			p->props[BANDWIDTH].u.data = 8000000;
+			break;
+		case BANDWIDTH_AUTO:
+			p->props[BANDWIDTH].u.data = 0;
+			break;
+		default:
+			printf("[fe0] unknown bandwidth for OFDM %d\n", feparams->u.ofdm.bandwidth);
+			break;
+		}
+		p->props[CODE_RATE_HP].u.data = feparams->u.ofdm.code_rate_HP;
+		p->props[CODE_RATE_LP].u.data = feparams->u.ofdm.code_rate_LP;
+		p->props[TRANSMISSION_MODE].u.data = feparams->u.ofdm.transmission_mode;
+		p->props[GUARD_INTERVAL].u.data = feparams->u.ofdm.guard_interval;
+		p->props[HIERARCHY].u.data = feparams->u.ofdm.hierarchy_information;
 		break;
 	default:
 		printf("frontend: unknown frontend type, exiting\n");
