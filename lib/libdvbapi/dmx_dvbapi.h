@@ -10,6 +10,7 @@
 #define __DEMUX_CS_H
 
 #include <string>
+#include <vector>
 
 #define DEMUX_POLL_TIMEOUT 0  // timeout in ms
 #define MAX_FILTER_LENGTH 16    // maximum number of filters
@@ -50,6 +51,7 @@ class cDemux
 		const unsigned char *GetFilterMask(void);
 		bool sectionFilter(unsigned short Pid, const unsigned char * const Tid, const unsigned char * const Mask, int len, int Timeout = DEMUX_POLL_TIMEOUT, const unsigned char * const nMask = NULL);
 		bool pesFilter(const unsigned short Pid);
+		bool pesFilterSet(const unsigned short Pid, int dvr);
 		void SetSyncMode(AVSYNC_TYPE mode);
 		void * getBuffer();
 		void * getChannel();
@@ -61,10 +63,12 @@ class cDemux
 		~cDemux();
 		
 	private:
-		int mHandle; /* us poor 'vice, us only got one */
+		std::vector<int> mHandleList; /* actually only 2 used for now, first is original request and second a shadow for DVR */
 		int mLen; /* length by of section filter */
 		DMX_CHANNEL_TYPE mPesType;
 
+		bool openReal(int &handle);
+		void closeAll();
 };
 
 #endif //__DEMUX_H

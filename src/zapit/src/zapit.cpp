@@ -1810,6 +1810,10 @@ int startPlayBack(CZapitChannel *thisChannel)
 	}
 	if (have_video) {
 		videoDemux->pesFilter(thisChannel->getVideoPid());
+#if HAVE_PC_HARDWARE
+		/* hack to get the pmt pid intot the DVR */
+		videoDemux->pesFilterSet(thisChannel->getPmtPid(), true);
+#endif
 	}
 //	audioDecoder->SetSyncMode(AVSYNC_ENABLED);
 

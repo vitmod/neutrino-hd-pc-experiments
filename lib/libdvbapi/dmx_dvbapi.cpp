@@ -39,28 +39,15 @@
 cDemux *videoDemux = 0;
 cDemux *audioDemux = 0;
 
-cDemux::cDemux(int num) : mHandle(-1), mLen(0), mPesType(DMX_VIDEO_CHANNEL)
-{ /* ignore num */
+cDemux::cDemux(int num) : mLen(0), mPesType(DMX_VIDEO_CHANNEL)
+{ /* don't do anything here, we may need multiple handles internally */
 	std::cout << "Demux::" << __FUNCTION__ << boost::format("num:%d ") % num << std::endl;
-	if ((mHandle = open(DEMUX_DEVICE, O_RDWR)) < 0)
-	{
-		std::cerr << boost::format("cDemux::cDemux error opening demux device %s:'%s'") % num % strerror(errno) << std::endl;;
-	}
-	else
-	{
-		std::cout << "successfully opened demux device" << std::endl;
-	}
 }
 
 
 cDemux::~cDemux()
 {
 	std::cout << "cDemux::" << __FUNCTION__ << " " << std::endl;
-	if(mHandle > 0)
-	{
-		close(mHandle);
-		mHandle = -1;
-	}
 }
 
 
@@ -93,24 +80,36 @@ void cDemux::Close(void)
 bool cDemux::Start(void)
 {
 	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
-	int res = ioctl(mHandle, DMX_START);
-	if(res < 0)
+	std::vector<int>::iterator it;
+	bool success = true;
+	for(it = mHandleList.begin(); it != mHandleList.end(); ++it)
 	{
-		std::cout << boost::format("cDemux::Start error setting DMX_START: '%s'") % strerror(errno) << std::endl;
+		int res = ioctl(*it, DMX_START);
+		if(res < 0)
+		{
+			std::cout << boost::format("cDemux::Start error setting DMX_START: '%s'") % strerror(errno) << std::endl;
+			success = false;
+		}
 	}
-	return !res;
+	return success;
 }
 
 
 bool cDemux::Stop(void)
 {
 	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
-	int res = ioctl(mHandle, DMX_STOP);
-	if(res < 0)
+	std::vector<int>::iterator it;
+	bool success = true;
+	for(it = mHandleList.begin(); it != mHandleList.end(); ++it)
 	{
-		std::cout << boost::format("cDemux::Stop error setting DMX_STOP: '%s'") % strerror(errno) << std::endl;
+		int res = ioctl(*it, DMX_STOP);
+		if(res < 0)
+		{
+			std::cout << boost::format("cDemux::Start error setting DMX_START: '%s'") % strerror(errno) << std::endl;
+			success = false;
+		}
 	}
-	return !res;
+	return success;
 }
 
 
@@ -120,7 +119,7 @@ int cDemux::Read(unsigned char *buff, int len, int Timeout)
 	int res = 0;
 	struct pollfd pfd;
 	memset(&pfd, 0, sizeof(struct pollfd));
-	pfd.fd = mHandle;
+	pfd.fd = mHandleList[0]; /* user will always read from the first handle */
 	pfd.events = POLLIN | POLLPRI;
 		
 	res = poll(&pfd, 1, Timeout);
@@ -128,7 +127,7 @@ int cDemux::Read(unsigned char *buff, int len, int Timeout)
 	{
 		if(pfd.revents & (POLLIN | POLLPRI))
 		{
-			res = read(mHandle, buff, len);
+			res = read(mHandleList[0], buff, len);
 			if(res < 0)
 			{
 				std::cout << boost::format("cDemux::Read error reading. '%s'") % strerror(errno) << std::endl;
@@ -186,15 +185,19 @@ const unsigned char *cDemux::GetFilterMask(void)
 bool cDemux::sectionFilter(unsigned short Pid, const unsigned char * const Tid, const unsigned char * const Mask, int len, int Timeout, const unsigned char * const nMask)
 {
 	int res = 0;
+	int sechandle = 0;
 	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
 	struct dmx_sct_filter_params sctFilterParams;
 
-	res = ioctl(mHandle, DMX_STOP);
-	if(res < 0)
+	Stop();
+	closeAll(); /* close and remove all existing handles */
+	bool success = openReal(sechandle);
+	if(!success)
 	{
 		std::cerr << boost::format("cDemux::sectionFilter error setting parameters for pid %04x:'%s'") % Pid % strerror(errno) << std::endl;
 	}
-	if(!res)
+
+	if(success)
 	{
 		std::stringstream val, msk;
 		std::cout << boost::format("cDemux::sectionFilter: pid 0x%04x (%d bytes)") % Pid % len << std::endl;
@@ -308,12 +311,55 @@ bool cDemux::sectionFilter(unsigned short Pid, const unsigned char * const Tid, 
 			return -1;
 		}
 	}
-	if(!res)
+	if(success)
 	{
-		res = ioctl(mHandle, DMX_SET_FILTER, &sctFilterParams);
+		res = ioctl(sechandle, DMX_SET_FILTER, &sctFilterParams);
 		if (res < 0)
 		{
 			std::cerr << boost::format("cDemux::sectionFilter error setting parameters for pid %04x:'%s'") % Pid % strerror(errno) << std::endl;
+			success = false;
+		}
+	}
+		
+	return !res;
+}
+
+
+bool cDemux::pesFilterSet(const unsigned short Pid, int dvr)
+{
+	int res = 0;
+	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
+	struct dmx_pes_filter_params pesFilterParams;
+
+	int handle;
+	res = !openReal(handle);
+	if(!res)
+	{
+		memset(&pesFilterParams, 0, sizeof(struct dmx_pes_filter_params));
+		pesFilterParams.pid = Pid;
+		pesFilterParams.input = DMX_IN_FRONTEND;
+		if(dvr) 
+		{
+			pesFilterParams.output = DMX_OUT_TS_TAP; // goes to dvr
+			pesFilterParams.pes_type = DMX_PES_OTHER;
+		}
+		else 
+		{
+			pesFilterParams.output = DMX_OUT_TAP;
+			pesFilterParams.pes_type = DMX_PES_OTHER;
+		}
+		
+		res = ioctl(handle, DMX_SET_BUFFER_SIZE, 0x400000);
+		if(res < 0)
+		{
+			std::cerr << boost::format("cDemux::pesFilter error setting buffersize for pid %04x:'%s'") % Pid << strerror(errno) << std::endl;
+		}
+		
+		
+		res = ioctl(handle, DMX_SET_PES_FILTER, &pesFilterParams);
+		if(res < 0)
+		{
+			std::cerr << boost::format("cDemux::pesFilter error setting parameters for pid %04x:'%s'") % Pid << strerror(errno) << std::endl;
 		}
 	}
 	return !res;
@@ -322,37 +368,18 @@ bool cDemux::sectionFilter(unsigned short Pid, const unsigned char * const Tid, 
 
 bool cDemux::pesFilter(const unsigned short Pid)
 {
-	int res = 0;
-	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
-	struct dmx_pes_filter_params pesFilterParams;
-	
-	memset(&pesFilterParams, 0, sizeof(struct dmx_pes_filter_params));
-	pesFilterParams.pid = Pid;
-	pesFilterParams.input = DMX_IN_FRONTEND;
-	if(mPesType == DMX_VIDEO_CHANNEL) 
+	int handle;
+
+	Stop();
+	closeAll(); /* close and remove all existing handles */
+
+	pesFilterSet(Pid, true);
+
+	if(mPesType == DMX_VIDEO_CHANNEL)
 	{
-		pesFilterParams.output = DMX_OUT_TS_TAP; // goes to dvr
-		pesFilterParams.pes_type = DMX_PES_OTHER;
+		/* stream for DVR, too */
+		pesFilterSet(0x00, true);
 	}
-	else 
-	{
-		pesFilterParams.output = DMX_OUT_TAP;
-		pesFilterParams.pes_type = DMX_PES_OTHER;
-	}
-	
-	res = ioctl(mHandle, DMX_SET_BUFFER_SIZE, 0x400000);
-	if(res < 0)
-	{
-		std::cerr << boost::format("cDemux::pesFilter error setting buffersize for pid %04x:'%s'") % Pid << strerror(errno) << std::endl;
-	}
-	
-	
-	res = ioctl(mHandle, DMX_SET_PES_FILTER, &pesFilterParams);
-	if(res < 0)
-	{
-		std::cerr << boost::format("cDemux::pesFilter error setting parameters for pid %04x:'%s'") % Pid << strerror(errno) << std::endl;
-	}
-	return !res;
 }
 
 
@@ -392,5 +419,34 @@ void cDemux::addPid(unsigned short Pid)
 void cDemux::getSTC(int64_t * STC)
 {
 	std::cout << "cDemux::" << __FUNCTION__ << std::endl;
+}
+
+
+bool cDemux::openReal(int &handle)
+{
+	handle = open(DEMUX_DEVICE, O_RDWR);
+	if(handle < 0)
+	{
+		std::cerr << "cDemux::" << __FUNCTION__ << boost::format(": Error opening demux: %s") % strerror(errno) << std::endl;
+	}
+	else
+	{
+		mHandleList.push_back(handle);
+	}
+	return (handle >= 0);
+}
+
+
+void cDemux::closeAll()
+{
+	if(!mHandleList.empty())
+	{
+		std::vector<int>::iterator it;
+		for(it = mHandleList.begin(); it != mHandleList.end(); ++it)
+		{
+			close(*it);
+		}
+		mHandleList.clear();
+	}
 }
 
