@@ -11,6 +11,7 @@
  * dvbsubtitle for HD1 ported by Coolstream LTD
  */
 
+#define __STDC_CONSTANT_MACROS
 #include "dvbsubtitle.h"
 
 extern "C" {

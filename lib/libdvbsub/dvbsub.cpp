@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#define __STDC_CONSTANT_MACROS
 #include <inttypes.h>
 #include <pthread.h>
 #include <semaphore.h>
