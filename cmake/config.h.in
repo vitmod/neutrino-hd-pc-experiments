@@ -1,0 +1,6 @@
+#cmakedefine HAVE_PC_HARDWARE ${HAVE_PC_HARDWARE}
+#cmakedefine HAVE_DVB_API_VERSION ${HAVE_DVB_API_VERSION}
+#cmakedefine PLUGINDIR "${PLUGINDIR}"
+#cmakedefine CONFIGDIR "${CONFIGDIR}"
+#cmakedefine FONTDIR "${FONTDIR}"
+#cmakedefine DATADIR "${DATADIR}"
