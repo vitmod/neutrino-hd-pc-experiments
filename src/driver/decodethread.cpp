@@ -23,6 +23,7 @@
 #include <iostream>
 #include <vector>
 #include <deque>
+#include <algorithm>
 #include <boost/format.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread.hpp>
@@ -179,13 +180,15 @@ void SWDecoder::decodeStream()
 	if(!res) 
 	{
 		std::cout << "opening virtual file" << std::endl;
-		res = av_open_input_file(&mState.pFormatCtx, boost::str(boost::format("dvrdecode://%p") % this).c_str(), 0, 0, 0);
+		AVInputFormat *pFmt = av_find_input_format("mpegts");
+		res = av_open_input_file(&mState.pFormatCtx, boost::str(boost::format("dvrdecode://%p") % this).c_str(), pFmt, 0, 0);
 		if(res)
 		{
 			std::cerr << boost::format("Error opening pseudo decoder file:%s") % strerror(errno) << std::endl;
 		} else
 		{
 			std::cout << "finding virtual stream info" << std::endl;
+
 			res = av_find_stream_info(mState.pFormatCtx);
 			if(res)
 			{
@@ -276,10 +279,10 @@ int SWDecoder::decodeFrames()
 						{
 							displaybuffer->resize(numBytes);
 						}
-						std::cout << "buffer filled" << std::endl;
 						avpicture_fill(reinterpret_cast<AVPicture *>(pFrameRGB), &(*displaybuffer)[0], PIX_FMT_RGB32, pCodecCtx->width, pCodecCtx->height);
 						sws_scale(img_convert_ctx, pFrame->data, pFrame->linesize, 0, pCodecCtx->height, 
 												   pFrameRGB->data, pFrameRGB->linesize);
+						sws_freeContext(img_convert_ctx);
 						/* enqueue for display */
 						displaybuffer->width(pCodecCtx->width);
 						displaybuffer->height(pCodecCtx->height);
@@ -313,9 +316,10 @@ void SWDecoder::releaseCodec()
 int SWDecoder::ffmpeg_open(URLContext *h, char const *filename, int flags)
 {
 	ffmpeg_ctx *ctx = static_cast<ffmpeg_ctx*>(malloc(sizeof(ffmpeg_ctx)));
+	memset(ctx, 0, sizeof(ffmpeg_ctx));
 	h->priv_data = ctx;
 	std::cout << __FUNCTION__ << std::endl;
-	SWDecoder::setupDVR(ctx->DVR);
+	setupDVR(ctx->DVR);
 	return ctx->DVR;
 }
 
@@ -326,7 +330,7 @@ int SWDecoder::ffmpeg_close(URLContext *h)
 	ffmpeg_ctx *ctx = static_cast<ffmpeg_ctx*>(h->priv_data);
 	if(ctx)
 	{
-		SWDecoder::releaseDVR(ctx->DVR);
+		releaseDVR(ctx->DVR);
 		free(ctx);
 		h->priv_data = 0;
 	}
@@ -337,14 +341,40 @@ int SWDecoder::ffmpeg_close(URLContext *h)
 int SWDecoder::ffmpeg_read(URLContext *h, unsigned char *buf, int size)
 {
 	int res = -1;
-	//std::cout << __FUNCTION__ << std::endl;
 	ffmpeg_ctx *ctx = static_cast<ffmpeg_ctx*>(h->priv_data);
 	if(ctx)
 	{
+
 		res = SWDecoder::readDVR(ctx->DVR, buf, size, 10000);
 		if(res > 0)
 		{
-			//std::cout << __FUNCTION__ << boost::format(" size %d, read %d") % size % res << std::endl;
+			if(!(res % 188) && (buf[0] == 0x47)) /* assume we start with a full packet */
+			{
+				int pid = ((static_cast<int>(buf[1]) << 8) | buf[2]) & 0x1fff;
+				if(!pid)
+				{
+					ctx->pmts.clear(); /* we need the pmt pids to tell them apart from the stream */
+					/* this code does not deal with multiple sections! */
+					int prognrs = ((((unsigned int)buf[5+1]&0x0f)<<8) | buf[5+2] - 5 - 4) / 4;
+					for(int idx = 0; idx < prognrs; ++idx)
+					{
+						int pid = (((unsigned int)buf[5+10+(idx*4)] << 8) | buf[5+11+(idx*4)]) & 0x1fff;
+						ctx->pmts.push_back(pid);
+					}
+				}
+				else
+				{
+					if(std::find(ctx->pmts.begin(), ctx->pmts.end(), pid) == ctx->pmts.end())
+					{ /* it is not one of the pmts */
+						if(ctx->streampid && pid != ctx->streampid)
+						{
+							res = -1; /* stream changed, trigger close */
+							std::cout << __FUNCTION__ << boost::format("new streampid %04x, retrigger") % ctx->streampid << std::endl;
+						}
+						ctx->streampid = pid;
+					}
+				}
+			}
 		}
 	}
 	return res;

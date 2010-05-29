@@ -70,6 +70,8 @@ private:
 	struct ffmpeg_ctx
 	{ /* used as private context for ffmpeg */
 		int DVR;
+		int streampid;
+		std::vector<int> pmts;
 	};
 	/* make all functions static, thin layer to read from the DVR */
 	static void setupDVR(int &DVR);

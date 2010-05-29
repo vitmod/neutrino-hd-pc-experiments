@@ -360,7 +360,8 @@ void GLThreadObj::render() {
 		std::cout << (boost::format("GLError:%d 0x%04x") % err % err) << std::endl;
 	}
 
-	boost::thread::sleep(boost::get_system_time() + boost::posix_time::milliseconds(20));
+	/* simply limit to 30 Hz, if anyone wants to do this properly, feel free */
+	boost::thread::sleep(boost::get_system_time() + boost::posix_time::milliseconds(34));
 	glutPostRedisplay();
 }
 
